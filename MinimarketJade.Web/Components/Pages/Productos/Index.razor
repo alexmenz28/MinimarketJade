@@ -66,11 +66,11 @@
                         <td class="align-middle">@p.StockActual</td>
                         <td class="align-middle">@(p.Categoria?.Nombre ?? "General")</td>
                         <td class="align-middle text-center">
-                            @*
+                            
                             <button class="btn btn-sm btn-info text-white me-1 shadow-sm" @onclick="() => VerDetalles(p)">Ver</button>
                             <button class="btn btn-sm btn-warning me-1 shadow-sm" @onclick="() => PrepararEdicion(p)">Editar</button>
                             <button class="btn btn-sm btn-danger shadow-sm">Inhabilitar</button>
-                            *@
+                            
                         </td>
                     </tr>
                 }
