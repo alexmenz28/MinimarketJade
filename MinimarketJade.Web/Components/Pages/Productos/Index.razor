@@ -53,7 +53,7 @@
                 @*Filtrar en caso de rellenar textoBusqueda*@
                 @foreach (var p in productosFiltrados)
                 {
-                    <tr>
+                    <tr class="@(p.Activo ? "" : "table-secondary text-muted")">
                         <td class="text-center">
                             @if (!string.IsNullOrEmpty(p.CodigoBarras))
                             {
@@ -64,13 +64,20 @@
                         <td class="align-middle">@p.Nombre</td>
                         <td class="align-middle">@p.PrecioVenta.ToString("N2") Bs. </td>
                         <td class="align-middle">@p.StockActual</td>
-                        <td class="align-middle">@(p.Categoria?.Nombre ?? "General")</td>
+                        <td class="align-middle">@p.Categoria.Nombre</td>
                         <td class="align-middle text-center">
-                            
+
                             <button class="btn btn-sm btn-info text-white me-1 shadow-sm" @onclick="() => VerDetalles(p)">Ver</button>
                             <button class="btn btn-sm btn-warning me-1 shadow-sm" @onclick="() => PrepararEdicion(p)">Editar</button>
-                            <button class="btn btn-sm btn-danger shadow-sm">Inhabilitar</button>
-                            
+
+                            @if (p.Activo)
+                            {
+                                <button class="btn btn-sm btn-danger shadow-sm" @onclick="() => InhabilitarProducto(p)">Inhabilitar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-success shadow-sm" @onclick="() => HabilitarProducto(p)">Habilitar</button>
+                            }
                         </td>
                     </tr>
                 }
@@ -79,7 +86,7 @@
     }
 </div>
 
-@* Modal para registrar los Productos*@
+@* Modal para registrar/editar los Productos*@
 @if (mostrarModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
@@ -163,9 +170,7 @@
                         <div class="modal-footer px-0 pb-0">
                             <button type="button" class="btn btn-secondary shadow-sm" @onclick="CerrarModal">Cancelar</button>
                             <button type="submit" class="btn btn-success shadow-sm">
-                                <button type="submit" class="btn btn-success shadow-sm">
-                                    @(esEdicion ? "Guardar Cambios" : "Registrar Producto")
-                                </button>
+                                @(esEdicion ? "Guardar Cambios" : "Registrar Producto")
                             </button>
                         </div>
                     </EditForm>
@@ -250,12 +255,15 @@
 
     //Logica del Filtrado
     private IEnumerable<Producto> productosFiltrados =>
-        string.IsNullOrWhiteSpace(textoBusqueda)
-        ? productos
-        : productos.Where(p =>
-            (p.Nombre != null && p.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
-            (p.CodigoBarras != null && p.CodigoBarras.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
-        );
+        productos
+            .Where(p =>
+                string.IsNullOrWhiteSpace(textoBusqueda)
+                ? true
+                : (p.Nombre != null && p.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
+                  (p.CodigoBarras != null && p.CodigoBarras.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
+                  (p.Categoria != null && p.Categoria.Nombre != null && p.Categoria.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+            )
+            .OrderByDescending(p => p.Activo); 
 
     //Cargar datos en la tabla
     protected override async Task OnInitializedAsync()
@@ -276,7 +284,7 @@
         string codigo = "777";
         for (int i = 0; i < 6; i++)
         {
-            codigo += random.Next(0, 6).ToString();
+            codigo += random.Next(0, 10).ToString();
         }
         productoActual.CodigoBarras = codigo;
     }
@@ -323,22 +331,39 @@
     {
         mensajeError = null;
 
+        bool existe = await ProductoService.ExisteNombreAsync(productoActual.Nombre, productoActual.IdProducto);
+
+        if (existe)
+        {
+            mensajeError = $"El nombre '{productoActual.Nombre}' ya lo tiene otro producto. Elige uno diferente.";
+            return;
+        }
+
         if (esEdicion)
         {
             await ProductoService.UpdateAsync(productoActual);
         }
         else
         {
-            bool existe = await ProductoService.ExisteNombreAsync(productoActual.Nombre);
-            if (existe)
-            {
-                mensajeError = $"Ya existe un producto con el nombre '{productoActual.Nombre}'.";
-                return;
-            }
             await ProductoService.AddAsync(productoActual);
         }
 
         mostrarModal = false;
+        await CargarDatos();
+    }
+
+    //Inhabilitar productos
+    private async Task InhabilitarProducto(Producto p)
+    {
+        await ProductoService.InhabilitarAsync(p.IdProducto);
+        await CargarDatos();
+    }
+
+    //Habilitar productos 
+    private async Task HabilitarProducto(Producto p)
+    {
+        p.Activo = true;
+        await ProductoService.UpdateAsync(p);
         await CargarDatos();
     }
 }

@@ -13,9 +13,13 @@ public interface IProductoService
     //Listar
     Task<List<Producto>> GetAllAsync(CancellationToken ct = default);
     //Crear
-    Task AddAsync(Producto producto);
-    Task<bool> ExisteNombreAsync(string nombre);
+    Task AddAsync(Producto producto);    
     //Editar
     Task UpdateAsync(Producto producto);
+    //Evitar duplicados al crear o editar un producto
+    Task<bool> ExisteNombreAsync(string nombre, int idActual = 0);
+    //Inhabilitar productos
+    Task InhabilitarAsync(int id);
+
 
 }

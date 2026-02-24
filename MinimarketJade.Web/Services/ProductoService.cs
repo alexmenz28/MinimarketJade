@@ -52,9 +52,23 @@ public class ProductoService : IProductoService
         _db.Productos.Update(producto);
         await _db.SaveChangesAsync();
     }
-    public async Task<bool> ExisteNombreAsync(string nombre)
+    public async Task<bool> ExisteNombreAsync(string nombre, int idActual = 0)
     {
         // Busca si hay productos con el mismo nombre (ignorando mayúsculas/minúsculas), para evitar duplicados al registrar
-        return await _db.Productos.AnyAsync(p => p.Nombre.ToLower() == nombre.ToLower());
+        return await _db.Productos.AnyAsync(p =>
+         p.Nombre.ToLower() == nombre.ToLower() &&
+         p.IdProducto != idActual);
+    }
+
+    //Inhabilitar productos
+    public async Task InhabilitarAsync(int id)
+    {
+        var producto = await _db.Productos.FindAsync(id);
+        if (producto != null)
+        {
+            producto.Activo = false; 
+            _db.Productos.Update(producto);
+            await _db.SaveChangesAsync();
+        }
     }
 }
