@@ -1,6 +1,47 @@
 @page "/clientes"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Clientes
 @rendermode InteractiveServer
+@inject IClienteService ClienteService
+
 <PageTitle>Clientes - Minimarket Jade</PageTitle>
 
 <h2>Clientes</h2>
-<p>Perfiles e historial de compras.</p>
+
+@if (clientes == null)
+{
+    <p>Cargando clientes...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Documento</th>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in clientes)
+            {
+                <tr>
+                    <td>@c.DocumentoIdentidad</td>
+                    <td>@c.NombreCompleto</td>
+                    <td>@c.Telefono</td>
+                    <td>@c.Email</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Cliente>? clientes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientes = await ClienteService.ObtenerTodosAsync();
+    }
+}
