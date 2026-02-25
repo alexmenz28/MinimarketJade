@@ -4,6 +4,7 @@ using MinimarketJade.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Clientes;
+using MinimarketJade.Web.Services.Proveedores;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<IProveedorService, ProveedorService>();
 
 // Blazor
 builder.Services.AddRazorComponents()

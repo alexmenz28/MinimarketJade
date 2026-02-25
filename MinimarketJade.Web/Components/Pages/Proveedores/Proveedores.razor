@@ -1,0 +1,69 @@
+@page "/proveedores"
+@using System.Collections.Generic
+@using Microsoft.AspNetCore.Components
+@rendermode InteractiveServer
+
+<PageTitle>Proveedores - Minimarket Jade</PageTitle>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Proveedores</h2>
+        <button class="btn btn-primary shadow-sm">Nuevo Proveedor</button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Contacto</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Dirección</th>
+                    <th>Tipo de Producto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in proveedores)
+                {
+                    <tr>
+                        <td class="align-middle">@p.Id</td>
+                        <td class="align-middle">@p.Nombre</td>
+                        <td class="align-middle">@p.Contacto</td>
+                        <td class="align-middle">@p.Telefono</td>
+                        <td class="align-middle">@p.Email</td>
+                        <td class="align-middle">@p.Direccion</td>
+                        <td class="align-middle">@p.TipoProducto</td>
+                        <td class="align-middle text-center">
+                            <button class="btn btn-sm btn-warning me-1 shadow-sm">Editar</button>
+                            <button class="btn btn-sm btn-danger shadow-sm">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    // Datos de ejemplo hardcodeados para la interfaz visual
+    private List<ProveedorMock> proveedores = new()
+    {
+        new ProveedorMock { Id = 1, Nombre = "Distribuidora ABC", Contacto = "Juan Pérez", Telefono = "789-1234", Email = "juan@abc.com", Direccion = "Calle 1 #123", TipoProducto = "Lácteos" },
+        new ProveedorMock { Id = 2, Nombre = "Bebidas del Valle", Contacto = "María López", Telefono = "789-5678", Email = "maria@valle.com", Direccion = "Av. Principal", TipoProducto = "Bebidas" },
+        new ProveedorMock { Id = 3, Nombre = "Carnes Premium", Contacto = "Carlos Ruiz", Telefono = "789-9012", Email = "carlos@carnes.com", Direccion = "Zona Industrial", TipoProducto = "Cárnicos" }
+    };
+
+    private class ProveedorMock
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Contacto { get; set; } = string.Empty;
+        public string Telefono { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Direccion { get; set; } = string.Empty;
+        public string TipoProducto { get; set; } = string.Empty;
+    }
+}

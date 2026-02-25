@@ -296,12 +296,16 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.NitRuc)
                 .HasMaxLength(30)
                 .HasColumnName("nit_ruc");
-            entity.Property(e => e.RazonSocial)
+            // Mapeamos la propiedad Nombre de la entidad a la columna razon_social existente
+            entity.Property(e => e.Nombre)
                 .HasMaxLength(200)
                 .HasColumnName("razon_social");
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");
+            entity.Property(e => e.TipoProducto)
+                .HasMaxLength(100)
+                .HasColumnName("tipo_producto");
         });
 
         modelBuilder.Entity<Usuario>(entity =>
