@@ -9,5 +9,8 @@ namespace MinimarketJade.Web.Services.Proveedores
         Task CrearAsync(Proveedor proveedor);
         Task ActualizarAsync(Proveedor proveedor);
         Task EliminarAsync(int id);
+        Task<bool> ExisteNitAsync(string nitRuc, int? excluirId = null);
+        Task InhabilitarAsync(int id);
+        Task HabilitarAsync(int id);
     }
 }

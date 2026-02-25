@@ -1,6 +1,9 @@
 @page "/proveedores"
-@using System.Collections.Generic
-@using Microsoft.AspNetCore.Components
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Proveedores
+@using Microsoft.EntityFrameworkCore
+@inject IProveedorService ProveedorService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Proveedores - Minimarket Jade</PageTitle>
@@ -8,62 +11,285 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Proveedores</h2>
-        <button class="btn btn-primary shadow-sm">Nuevo Proveedor</button>
+
+        <div class="d-flex gap-2">
+            <div class="input-group" style="width: 360px;">
+                <span class="input-group-text bg-white">🔍</span>
+                <input class="form-control" placeholder="Buscar por razón social, NIT/RUC o contacto..." @bind="textoBusqueda" @bind:event="oninput" />
+            </div>
+
+            <button class="btn btn-primary shadow-sm" @onclick="AbrirModal">Nuevo Proveedor</button>
+        </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-hover table-bordered shadow-sm">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Contacto</th>
-                    <th>Teléfono</th>
-                    <th>Email</th>
-                    <th>Dirección</th>
-                    <th>Tipo de Producto</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in proveedores)
-                {
+    @if (proveedores == null)
+    {
+        <div class="alert alert-info">Cargando proveedores...</div>
+    }
+    else if (!proveedores.Any())
+    {
+        <div class="alert alert-warning">No hay proveedores registrados.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered shadow-sm">
+                <thead class="table-dark">
                     <tr>
-                        <td class="align-middle">@p.Id</td>
-                        <td class="align-middle">@p.Nombre</td>
-                        <td class="align-middle">@p.Contacto</td>
-                        <td class="align-middle">@p.Telefono</td>
-                        <td class="align-middle">@p.Email</td>
-                        <td class="align-middle">@p.Direccion</td>
-                        <td class="align-middle">@p.TipoProducto</td>
-                        <td class="align-middle text-center">
-                            <button class="btn btn-sm btn-warning me-1 shadow-sm">Editar</button>
-                            <button class="btn btn-sm btn-danger shadow-sm">Eliminar</button>
-                        </td>
+                        <th>ID</th>
+                        <th>Razón Social</th>
+                        <th>NIT / RUC</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Dirección</th>
+                        <th>Acciones</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var p in proveedoresFiltrados)
+                    {
+                        <tr class="@(p.Activo ? "" : "table-secondary text-muted")">
+                            <td class="align-middle">@p.IdProveedor</td>
+                            <td class="align-middle">@p.RazonSocial</td>
+                            <td class="align-middle">@p.NitRuc</td>
+                            <td class="align-middle">@(string.IsNullOrEmpty(p.Contacto) ? "-" : p.Contacto)</td>
+                            <td class="align-middle">@(string.IsNullOrEmpty(p.Telefono) ? "-" : p.Telefono)</td>
+                            <td class="align-middle">@(string.IsNullOrEmpty(p.Email) ? "-" : p.Email)</td>
+                            <td class="align-middle">@(string.IsNullOrEmpty(p.Direccion) ? "-" : p.Direccion)</td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-sm btn-warning me-1 shadow-sm" @onclick="() => PrepararEdicion(p)">Editar</button>
+
+                                @if (p.Activo)
+                                {
+                                    <button class="btn btn-sm btn-danger shadow-sm" @onclick="() => ConfirmarInhabilitar(p.IdProveedor)">Inhabilitar</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-success shadow-sm" @onclick="() => ConfirmarHabilitar(p.IdProveedor)">Habilitar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
 
-@code {
-    // Datos de ejemplo hardcodeados para la interfaz visual
-    private List<ProveedorMock> proveedores = new()
-    {
-        new ProveedorMock { Id = 1, Nombre = "Distribuidora ABC", Contacto = "Juan Pérez", Telefono = "789-1234", Email = "juan@abc.com", Direccion = "Calle 1 #123", TipoProducto = "Lácteos" },
-        new ProveedorMock { Id = 2, Nombre = "Bebidas del Valle", Contacto = "María López", Telefono = "789-5678", Email = "maria@valle.com", Direccion = "Av. Principal", TipoProducto = "Bebidas" },
-        new ProveedorMock { Id = 3, Nombre = "Carnes Premium", Contacto = "Carlos Ruiz", Telefono = "789-9012", Email = "carlos@carnes.com", Direccion = "Zona Industrial", TipoProducto = "Cárnicos" }
-    };
+@* Modal para crear/editar *@
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@(esEdicion ? "Editar Proveedor" : "Nuevo Proveedor")</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="proveedorActual" OnValidSubmit="GuardarProveedor">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
 
-    private class ProveedorMock
+                        @if (!string.IsNullOrEmpty(mensajeError))
+                        {
+                            <div class="alert alert-danger">@mensajeError</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Razón Social</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.RazonSocial" />
+                            <ValidationMessage For="() => proveedorActual.RazonSocial" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">NIT / RUC</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.NitRuc" />
+                            <ValidationMessage For="() => proveedorActual.NitRuc" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Teléfono</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.Telefono" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.Email" />
+                            <ValidationMessage For="() => proveedorActual.Email" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Dirección</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.Direccion" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Contacto</label>
+                            <InputText class="form-control" @bind-Value="proveedorActual.Contacto" />
+                        </div>
+
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                            <button type="submit" class="btn btn-success">@(esEdicion ? "Guardar" : "Registrar")</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Proveedor>? proveedores;
+    private Proveedor proveedorActual = new();
+    private bool mostrarModal = false;
+    private bool esEdicion = false;
+    private string? mensajeError;
+    private string textoBusqueda = string.Empty;
+
+    private IEnumerable<Proveedor> proveedoresFiltrados =>
+        (proveedores ?? Enumerable.Empty<Proveedor>())
+            .Where(p => string.IsNullOrWhiteSpace(textoBusqueda)
+                ? true
+                : (p.RazonSocial != null && p.RazonSocial.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+                  || (p.NitRuc != null && p.NitRuc.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+                  || (p.Contacto != null && p.Contacto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
     {
-        public int Id { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public string Contacto { get; set; } = string.Empty;
-        public string Telefono { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Direccion { get; set; } = string.Empty;
-        public string TipoProducto { get; set; } = string.Empty;
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        proveedores = await ProveedorService.ObtenerTodosAsync();
+    }
+
+    private void AbrirModal()
+    {
+        mensajeError = null;
+        esEdicion = false;
+        proveedorActual = new Proveedor();
+        mostrarModal = true;
+    }
+
+    private void PrepararEdicion(Proveedor p)
+    {
+        mensajeError = null;
+        esEdicion = true;
+        proveedorActual = new Proveedor
+        {
+            IdProveedor = p.IdProveedor,
+            RazonSocial = p.RazonSocial,
+            NitRuc = p.NitRuc,
+            Telefono = p.Telefono,
+            Email = p.Email,
+            Direccion = p.Direccion,
+            Contacto = p.Contacto
+        };
+        mostrarModal = true;
+    }
+
+    private void CerrarModal() => mostrarModal = false;
+
+    private async Task GuardarProveedor()
+    {
+        mensajeError = null;
+
+        try
+        {
+            // Validar NIT/RUC único
+            bool existe;
+            if (esEdicion)
+            {
+                existe = await ProveedorService.ExisteNitAsync(proveedorActual.NitRuc, proveedorActual.IdProveedor);
+            }
+            else
+            {
+                existe = await ProveedorService.ExisteNitAsync(proveedorActual.NitRuc);
+            }
+
+            if (existe)
+            {
+                mensajeError = "El NIT/RUC ya está registrado.";
+                return;
+            }
+
+            if (esEdicion)
+            {
+                await ProveedorService.ActualizarAsync(proveedorActual);
+            }
+            else
+            {
+                await ProveedorService.CrearAsync(proveedorActual);
+            }
+
+            mostrarModal = false;
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            // Mostrar mensaje amigable y log básico
+            mensajeError = "Ocurrió un error al guardar el proveedor. " + ex.Message;
+        }
+    }
+
+    private async Task ConfirmarEliminar(int id)
+    {
+        // Mantener compatibilidad: el método ahora realiza inhabilitación lógica
+        bool ok = await JS.InvokeAsync<bool>("confirm", "¿Desea inhabilitar este proveedor?");
+        if (!ok) return;
+
+        try
+        {
+            await ProveedorService.InhabilitarAsync(id);
+            await CargarDatos();
+        }
+        catch (DbUpdateException)
+        {
+            await JS.InvokeVoidAsync("alert", "No se puede inhabilitar el proveedor porque tiene registros relacionados.");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Ocurrió un error: " + ex.Message);
+        }
+    }
+
+    private async Task ConfirmarInhabilitar(int id)
+    {
+        bool ok = await JS.InvokeAsync<bool>("confirm", "¿Desea inhabilitar este proveedor?");
+        if (!ok) return;
+
+        try
+        {
+            await ProveedorService.InhabilitarAsync(id);
+            await CargarDatos();
+        }
+        catch (DbUpdateException)
+        {
+            await JS.InvokeVoidAsync("alert", "No se puede inhabilitar el proveedor porque tiene registros relacionados.");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Ocurrió un error: " + ex.Message);
+        }
+    }
+
+    private async Task ConfirmarHabilitar(int id)
+    {
+        bool ok = await JS.InvokeAsync<bool>("confirm", "¿Desea habilitar este proveedor?");
+        if (!ok) return;
+
+        try
+        {
+            await ProveedorService.HabilitarAsync(id);
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Ocurrió un error: " + ex.Message);
+        }
     }
 }
