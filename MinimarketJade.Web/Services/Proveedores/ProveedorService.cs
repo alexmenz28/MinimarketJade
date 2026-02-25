@@ -33,8 +33,23 @@ namespace MinimarketJade.Web.Services.Proveedores
 
         public async Task ActualizarAsync(Proveedor proveedor)
         {
-            _context.Proveedors.Update(proveedor);
-            await _context.SaveChangesAsync();
+            // Buscar la entidad existente y actualizar campos individualmente
+            var existente = await _context.Proveedors
+                .FirstOrDefaultAsync(p => p.IdProveedor == proveedor.IdProveedor);
+
+            if (existente != null)
+            {
+                existente.RazonSocial = proveedor.RazonSocial;
+                existente.NitRuc = proveedor.NitRuc;
+                existente.Telefono = proveedor.Telefono;
+                existente.Email = proveedor.Email;
+                existente.Direccion = proveedor.Direccion;
+                existente.Contacto = proveedor.Contacto;
+                // Si la propiedad Activo está mapeada en BD y se usa, también se puede actualizar:
+                existente.Activo = proveedor.Activo;
+
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task EliminarAsync(int id)
