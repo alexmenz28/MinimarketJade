@@ -1,23 +1,39 @@
 @inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">Acerca de</a>
+@if (!requiereLogin)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
         </div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+        <main>
+            <div class="top-row px-4">
+                <span class="text-muted">Minimarket Jade</span>
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool requiereLogin;
+
+    protected override void OnInitialized()
+    {
+        requiereLogin = !Auth.IsAuthenticated;
+        if (requiereLogin)
+            Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

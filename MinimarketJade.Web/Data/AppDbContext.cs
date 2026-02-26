@@ -17,9 +17,24 @@ public class AppDbContext : DbContext
     /// <summary>Tabla Categoria: categorías de productos con jerarquía (padre/hijos).</summary>
     public DbSet<Categoria> Categorias => Set<Categoria>();
 
+    /// <summary>Tabla Usuario: usuarios del sistema para login (nombre_usuario, contraseña_hash, rol).</summary>
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Mapeo de Usuario: columnas id_usuario, nombre_usuario, contraseña_hash, rol, activo (script 01_CreateTables.sql).
+        modelBuilder.Entity<Usuario>(e =>
+        {
+            e.ToTable("Usuario");
+            e.HasKey(x => x.IdUsuario);
+            e.Property(x => x.IdUsuario).HasColumnName("id_usuario");
+            e.Property(x => x.NombreUsuario).HasMaxLength(50).HasColumnName("nombre_usuario");
+            e.Property(x => x.ContraseñaHash).HasMaxLength(256).HasColumnName("contraseña_hash");
+            e.Property(x => x.Rol).HasMaxLength(20).HasColumnName("rol");
+            e.Property(x => x.Activo).HasColumnName("activo");
+        });
 
         // Mapeo de Categoria: nombres de columnas coinciden con el script SQL (id_categoria, nombre, id_categoria_padre).
         // Relación recursiva: una categoría puede tener una categoría padre y varias subcategorías (árbol de categorías).

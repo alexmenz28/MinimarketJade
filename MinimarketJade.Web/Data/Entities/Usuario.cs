@@ -1,0 +1,16 @@
+namespace MinimarketJade.Web.Data.Entities;
+
+/// <summary>
+/// Usuario del sistema (tabla Usuario). Se usa para login y control de acceso por rol.
+/// Rol es texto: "Administrador" o "Vendedor" (según el script de BD).
+/// </summary>
+public class Usuario
+{
+    public int IdUsuario { get; set; }
+    public string NombreUsuario { get; set; } = string.Empty;
+    /// <summary>Contraseña hasheada (nunca guardar en texto plano).</summary>
+    public string ContraseñaHash { get; set; } = string.Empty;
+    /// <summary>Rol del usuario: "Administrador" o "Vendedor".</summary>
+    public string Rol { get; set; } = string.Empty;
+    public bool Activo { get; set; } = true;
+}

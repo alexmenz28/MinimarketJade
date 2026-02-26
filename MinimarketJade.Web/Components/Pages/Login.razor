@@ -1,0 +1,68 @@
+@page "/login"
+@rendermode InteractiveServer
+@layout LoginLayout
+@using Microsoft.EntityFrameworkCore
+@using MinimarketJade.Web.Data
+@using MinimarketJade.Web.Services
+@inject AppDbContext Db
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Iniciar sesión - Minimarket Jade</PageTitle>
+
+<h2 class="mb-4 text-center text-dark">Minimarket Jade</h2>
+<p class="text-muted text-center mb-4">Ingrese sus credenciales</p>
+
+<EditForm Model="@model" OnValidSubmit="@IntentarEntrar">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+    <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <InputText @bind-Value="model.NombreUsuario" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <InputText type="password" @bind-Value="model.Password" class="form-control" />
+    </div>
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger">@mensajeError</div>
+    }
+    <button type="submit" class="btn btn-primary w-100 mt-2">Entrar</button>
+</EditForm>
+
+@code {
+    private LoginModel model = new();
+    private string? mensajeError;
+
+    private async Task IntentarEntrar()
+    {
+        mensajeError = null;
+        try
+        {
+            var user = Db.Usuarios
+                .AsNoTracking()
+                .FirstOrDefault(u => u.NombreUsuario == model.NombreUsuario && u.Activo);
+            if (user == null || !PasswordHelper.Verify(model.Password ?? "", user.ContraseñaHash))
+            {
+                mensajeError = "Usuario o contraseña incorrectos.";
+                return;
+            }
+            Auth.SignIn(user);
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            mensajeError = "Error: " + ex.Message;
+        }
+        await Task.CompletedTask;
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese usuario")]
+        public string? NombreUsuario { get; set; }
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese contraseña")]
+        public string? Password { get; set; }
+    }
+}
