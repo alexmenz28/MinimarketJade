@@ -1,6 +1,369 @@
 @page "/productos"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services
+@using MinimarketJade.Web.Services.Categorias
+@using MinimarketJade.Web.Helpers
+@inject IProductoService ProductoService
+@inject ICategoriaService CategoriaService
 @rendermode InteractiveServer
+
 <PageTitle>Productos - Minimarket Jade</PageTitle>
 
-<h2>Productos</h2>
-<p>Catálogo y gestión de productos.</p>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Catálogo y Gestión de Productos</h2>
+
+        @*Campo de Busqueda *@
+        <div class="d-flex gap-2">
+            <div class="input-group" style="width: 350px;">
+                <span class="input-group-text bg-white">🔍</span>
+                <input type="text" class="form-control"
+                       placeholder="Buscar por nombre o código..."
+                       @bind="textoBusqueda"
+                       @bind:event="oninput" />
+            </div>
+
+            <button class="btn btn-primary shadow-sm" @onclick="AbrirModal">Nuevo Producto</button>
+        </div>
+    </div>
+
+    @if (productos == null)
+    {
+        <div class="alert alert-info shadow-sm">Cargando productos desde la base de datos...</div>
+    }
+    else if (!productos.Any())
+    {
+        <div class="alert alert-warning shadow-sm">No hay productos registrados en el Minimarket.</div>
+    }
+    else
+    {
+        @* Tabla PRODUCTOS principal *@
+        <table class="table table-hover table-bordered shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th class="text-center">Código</th>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Categoría</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @*Filtrar en caso de rellenar textoBusqueda*@
+                @foreach (var p in productosFiltrados)
+                {
+                    <tr class="@(p.Activo ? "" : "table-secondary text-muted")">
+                        <td class="text-center">
+                            @if (!string.IsNullOrEmpty(p.CodigoBarras))
+                            {
+                                <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(p.CodigoBarras)" style="max-height: 45px;" />
+                                <div style="font-size: 0.7rem;" class="text-muted">@p.CodigoBarras</div>
+                            }
+                        </td>
+                        <td class="align-middle">@p.Nombre</td>
+                        <td class="align-middle">@p.PrecioVenta.ToString("N2") Bs. </td>
+                        <td class="align-middle">@p.StockActual</td>
+                        <td class="align-middle">@p.Categoria.Nombre</td>
+                        <td class="align-middle text-center">
+
+                            <button class="btn btn-sm btn-info text-white me-1 shadow-sm" @onclick="() => VerDetalles(p)">Ver</button>
+                            <button class="btn btn-sm btn-warning me-1 shadow-sm" @onclick="() => PrepararEdicion(p)">Editar</button>
+
+                            @if (p.Activo)
+                            {
+                                <button class="btn btn-sm btn-danger shadow-sm" @onclick="() => InhabilitarProducto(p)">Inhabilitar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-success shadow-sm" @onclick="() => HabilitarProducto(p)">Habilitar</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@* Modal para registrar/editar los Productos*@
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@(esEdicion ? "Editar Producto" : "Registrar Nuevo Producto")</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="productoActual" OnValidSubmit="GuardarProducto">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(mensajeError))
+                        {
+                            <div class="alert alert-danger py-2">@mensajeError</div>
+                        }
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label d-block fw-bold">Código de Barras</label>
+                                <div class="input-group mb-2 shadow-sm">
+                                    <InputText class="form-control bg-light" @bind-Value="productoActual.CodigoBarras" readonly="true" />
+                                    @if (!esEdicion)
+                                    {
+                                        <button class="btn btn-dark" type="button" @onclick="GenerarCodigoAutomatico">Generar</button>
+                                    }
+                                </div>
+                                <div class="border rounded p-2 text-center bg-light" style="min-height: 80px;">
+                                    @if (!string.IsNullOrEmpty(productoActual.CodigoBarras))
+                                    {
+                                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(productoActual.CodigoBarras)" style="max-height: 60px;" />
+                                        <div class="small fw-bold">@productoActual.CodigoBarras</div>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Nombre del Producto</label>
+                                <InputText class="form-control shadow-sm" @bind-Value="productoActual.Nombre" />
+                                <label class="form-label mt-3 fw-bold">Categoría</label>
+                                <InputSelect class="form-select shadow-sm" @bind-Value="productoActual.IdCategoria">
+                                    @foreach (var cat in categorias)
+                                    {
+                                        <option value="@cat.IdCategoria">@cat.Nombre</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Unidad Medida</label>
+                                <InputText class="form-control shadow-sm" @bind-Value="productoActual.UnidadMedida" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Precio Compra</label>
+                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.PrecioCompra" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Precio Venta</label>
+                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.PrecioVenta" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Stock Actual</label>
+                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.StockActual" readonly="@esEdicion" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Stock Mínimo</label>
+                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.StockMinimo" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Descripción</label>
+                            <InputTextArea class="form-control shadow-sm" @bind-Value="productoActual.Descripcion" rows="2" />
+                        </div>
+
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary shadow-sm" @onclick="CerrarModal">Cancelar</button>
+                            <button type="submit" class="btn btn-success shadow-sm">
+                                @(esEdicion ? "Guardar Cambios" : "Registrar Producto")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal de Solo Lectura para detalles COMPLETOS *@
+@if (mostrarDetallesModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-info shadow-lg">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Ficha Técnica del Producto</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarDetallesModal = false"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div class="text-center mb-4 p-3 border rounded bg-white shadow-sm">
+                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(productoActual.CodigoBarras)" style="max-height: 100px;" />
+                        <h3 class="mt-2 text-primary">@productoActual.Nombre</h3>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group shadow-sm mb-3">
+                                <li class="list-group-item bg-dark text-white fw-bold">Información Básica</li>
+                                <li class="list-group-item"><strong>Código Barras:</strong> @productoActual.CodigoBarras</li>
+                                <li class="list-group-item"><strong>Categoría:</strong> @(productoActual.Categoria?.Nombre ?? "General")</li>
+                                <li class="list-group-item"><strong>Unidad Medida:</strong> @productoActual.UnidadMedida</li>
+                                <li class="list-group-item">
+                                    <strong>Estado:</strong>
+                                    <span class="badge @(productoActual.Activo ? "bg-success" : "bg-danger")">
+                                        @(productoActual.Activo ? "ACTIVO" : "INACTIVO")
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group shadow-sm mb-3">
+                                <li class="list-group-item bg-dark text-white fw-bold">Valores e Inventario</li>
+                                <li class="list-group-item d-flex justify-content-between"><strong>Precio Compra:</strong> <span>@productoActual.PrecioCompra.ToString("N2") Bs.</span></li>
+                                <li class="list-group-item d-flex justify-content-between text-success fw-bold"><strong>Precio Venta:</strong> <span>@productoActual.PrecioVenta.ToString("N2") Bs.</span></li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <strong>Stock Actual:</strong>
+                                    <span class="badge @(productoActual.StockActual <= productoActual.StockMinimo ? "bg-danger" : "bg-success") fs-6">
+                                        @productoActual.StockActual
+                                    </span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between"><strong>Stock Mínimo:</strong> <span>@productoActual.StockMinimo</span></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-dark text-white fw-bold">Descripción del Producto</div>
+                        <div class="card-body bg-white">
+                            <p class="card-text">@(string.IsNullOrEmpty(productoActual.Descripcion) ? "Sin descripcion" : productoActual.Descripcion)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-info text-white w-100 shadow-sm" @onclick="() => mostrarDetallesModal = false">Cerrar Ficha</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    @* Variables y Estados *@
+    private List<Producto> productos = new();
+    private List<Categoria> categorias = new();
+    private Producto productoActual = new();
+    private bool mostrarModal = false;
+    private bool mostrarDetallesModal = false;
+    private string? mensajeError;
+    private string textoBusqueda = "";
+    private bool esEdicion = false;
+
+    //Logica del Filtrado
+    private IEnumerable<Producto> productosFiltrados =>
+        productos
+            .Where(p =>
+                string.IsNullOrWhiteSpace(textoBusqueda)
+                ? true
+                : (p.Nombre != null && p.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
+                  (p.CodigoBarras != null && p.CodigoBarras.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
+                  (p.Categoria != null && p.Categoria.Nombre != null && p.Categoria.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+            )
+            .OrderByDescending(p => p.Activo); 
+
+    //Cargar datos en la tabla
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        productos = await ProductoService.GetAllAsync();
+        categorias = await CategoriaService.GetAllAsync();
+    }
+
+    //Generar Codigo De barras
+    private void GenerarCodigoAutomatico()
+    {
+        Random random = new Random();
+        string codigo = "777";
+        for (int i = 0; i < 6; i++)
+        {
+            codigo += random.Next(0, 10).ToString();
+        }
+        productoActual.CodigoBarras = codigo;
+    }
+
+    private void AbrirModal()
+    {
+        mensajeError = null;
+        esEdicion = false;
+        productoActual = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 0, CodigoBarras = "", IdCategoria = 1 };
+        mostrarModal = true;
+    }
+
+    private void VerDetalles(Producto p)
+    {
+        productoActual = p;
+        mostrarDetallesModal = true;
+    }
+
+    private void PrepararEdicion(Producto p)
+    {
+        mensajeError = null;
+        esEdicion = true;
+        productoActual = new Producto
+        {
+            IdProducto = p.IdProducto,
+            Nombre = p.Nombre,
+            CodigoBarras = p.CodigoBarras,
+            PrecioCompra = p.PrecioCompra,
+            PrecioVenta = p.PrecioVenta,
+            StockActual = p.StockActual,
+            StockMinimo = p.StockMinimo,
+            UnidadMedida = p.UnidadMedida,
+            Descripcion = p.Descripcion,
+            IdCategoria = p.IdCategoria,
+            Activo = p.Activo,
+            Categoria = p.Categoria
+        };
+        mostrarModal = true;
+    }
+
+    private void CerrarModal() => mostrarModal = false;
+
+    private async Task GuardarProducto()
+    {
+        mensajeError = null;
+
+        bool existe = await ProductoService.ExisteNombreAsync(productoActual.Nombre, productoActual.IdProducto);
+
+        if (existe)
+        {
+            mensajeError = $"El nombre '{productoActual.Nombre}' ya lo tiene otro producto. Elige uno diferente.";
+            return;
+        }
+
+        if (esEdicion)
+        {
+            await ProductoService.UpdateAsync(productoActual);
+        }
+        else
+        {
+            await ProductoService.AddAsync(productoActual);
+        }
+
+        mostrarModal = false;
+        await CargarDatos();
+    }
+
+    //Inhabilitar productos
+    private async Task InhabilitarProducto(Producto p)
+    {
+        await ProductoService.InhabilitarAsync(p.IdProducto);
+        await CargarDatos();
+    }
+
+    //Habilitar productos 
+    private async Task HabilitarProducto(Producto p)
+    {
+        p.Activo = true;
+        await ProductoService.UpdateAsync(p);
+        await CargarDatos();
+    }
+}

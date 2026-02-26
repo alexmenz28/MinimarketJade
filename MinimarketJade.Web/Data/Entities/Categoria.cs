@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace MinimarketJade.Web.Data.Entities;
 
 /// <summary>
@@ -5,6 +8,7 @@ namespace MinimarketJade.Web.Data.Entities;
 /// La estructura es jerárquica (árbol): una categoría puede tener una categoría padre
 /// y varias subcategorías. Si IdCategoriaPadre es null, la categoría es raíz (nivel superior).
 /// </summary>
+[Table("Categoria")] 
 public class Categoria
 {
     /// <summary>Identificador único de la categoría (PK en la tabla Categoria).</summary>

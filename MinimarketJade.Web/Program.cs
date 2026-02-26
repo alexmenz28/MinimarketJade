@@ -3,6 +3,10 @@ using MinimarketJade.Web.Data;
 using MinimarketJade.Web.Data.Entities;
 using MinimarketJade.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using MinimarketJade.Web.Services.Categorias;
+using MinimarketJade.Web.Services.Clientes;
+using MinimarketJade.Web.Services.Proveedores;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +16,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Servicio de categorías: el frontend lo inyecta (ICategoriaService) para listar y gestionar la jerarquía de categorías.
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+//Leemos la cadena desde appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Servicios de aplicación
+builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<IProveedorService, ProveedorService>();
 
 // Autenticación en memoria (login/logout): estado del usuario actual.
 builder.Services.AddSingleton<AuthService>();
@@ -58,4 +72,8 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+
+
 app.Run();
+
+
