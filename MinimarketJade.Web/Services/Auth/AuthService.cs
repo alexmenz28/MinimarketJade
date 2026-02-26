@@ -1,6 +1,6 @@
 using MinimarketJade.Web.Data.Entities;
 
-namespace MinimarketJade.Web.Services;
+namespace MinimarketJade.Web.Services.Auth;
 
 /// <summary>
 /// Servicio de autenticación en memoria (singleton). Guarda el usuario actual tras el login

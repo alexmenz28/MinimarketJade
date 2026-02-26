@@ -35,8 +35,8 @@ Este documento describe cómo está implementado el inicio y cierre de sesión e
 |--------|-------------|
 | **Data/Entities/Usuario.cs** | Entidad: `IdUsuario`, `NombreUsuario`, `ContraseñaHash`, `Rol` (string), `Activo`. |
 | **Data/AppDbContext.cs** | `DbSet<Usuario>` y mapeo a la tabla `Usuario` (columnas según script SQL). |
-| **Services/PasswordHelper.cs** | `Hash(password)` y `Verify(password, storedHash)` con SHA256 + Base64. |
-| **Services/AuthService.cs** | Singleton: `CurrentUser`, `IsAuthenticated`, `RolNombre`, `IsAdministrador`, `IsVendedor`, `SignIn(user)`, `SignOut()`. |
+| **Services/Auth/PasswordHelper.cs** | `Hash(password)` y `Verify(password, storedHash)` con SHA256 + Base64. |
+| **Services/Auth/AuthService.cs** | Singleton: `CurrentUser`, `IsAuthenticated`, `RolNombre`, `IsAdministrador`, `IsVendedor`, `SignIn(user)`, `SignOut()`. |
 | **Components/Pages/Login.razor** | Página `/login`: formulario, consulta a BD, verificación de contraseña, `SignIn` y redirección. |
 | **Components/Pages/Logout.razor** | Página `/logout`: `SignOut()` y redirección por JS a `/login`. |
 | **Components/Layout/MainLayout.razor** | Si no está autenticado, redirige a `/login` y no muestra contenido. |

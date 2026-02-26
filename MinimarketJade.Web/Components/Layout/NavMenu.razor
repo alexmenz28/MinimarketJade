@@ -8,46 +8,6 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inicio
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="ventas">
-                <span class="bi bi-cart-fill-nav-menu" aria-hidden="true"></span> Ventas
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="productos">
-                <span class="bi bi-box-seam-fill-nav-menu" aria-hidden="true"></span> Productos
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="inventario">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Inventario
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="clientes">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Clientes
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="proveedores">
-                <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Proveedores
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="compras">
-                <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> Compras
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="reportes">
-                <span class="bi bi-graph-up-nav-menu" aria-hidden="true"></span> Reportes
-            </NavLink>
-        </div>
         @if (Auth.IsAuthenticated)
         {
             <div class="nav-item px-3">
@@ -73,6 +33,11 @@
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="clientes">
                     <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Clientes
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="proveedores">
+                    <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Proveedores
                 </NavLink>
             </div>
             <div class="nav-item px-3">

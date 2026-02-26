@@ -21,8 +21,8 @@ La tabla `Categoria` en SQL Server tiene: `id_categoria`, `nombre`, `id_categori
 | `MinimarketJade.Web/Data/AppDbContext.cs` | DbSet `Categorias` y mapeo a la tabla con nombres de columna `id_categoria`, `nombre`, `id_categoria_padre`. |
 | `MinimarketJade.Web/Models/CategoriaDto.cs` | DTO plano para listas y formularios (IdCategoria, Nombre, IdCategoriaPadre). |
 | `MinimarketJade.Web/Models/CategoriaTreeDto.cs` | DTO con lista `Hijos` para representar el árbol completo. |
-| `MinimarketJade.Web/Services/ICategoriaService.cs` | Interfaz del servicio (contrato que usa el frontend). |
-| `MinimarketJade.Web/Services/CategoriaService.cs` | Implementación: consultas y CRUD. |
+| `MinimarketJade.Web/Services/Categoria/ICategoriaService.cs` | Interfaz del servicio (contrato que usa el frontend). |
+| `MinimarketJade.Web/Services/Categoria/CategoriaService.cs` | Implementación: consultas y CRUD. |
 
 Los comentarios en español en el código explican cada parte.
 
@@ -110,4 +110,4 @@ La tabla `Categoria` se crea con el script `Scripts/01_CreateTables.sql`. Los da
 - El frontend usa **ICategoriaService** inyectado; los DTOs son **CategoriaDto** (plano) y **CategoriaTreeDto** (con **Hijos** para el árbol).
 - Los comentarios en el código están en español para que todo el equipo pueda seguir la lógica.
 
-Si dudas sobre algún método o DTO, revisa los comentarios en `ICategoriaService.cs` y `CategoriaService.cs`.
+Si dudas sobre algún método o DTO, revisa los comentarios en `Services/Categoria/ICategoriaService.cs` y `Services/Categoria/CategoriaService.cs`.

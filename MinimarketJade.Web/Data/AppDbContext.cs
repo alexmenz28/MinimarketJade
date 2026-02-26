@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Data.Entities;
@@ -7,9 +7,8 @@ namespace MinimarketJade.Web.Data;
 
 /// <summary>
 /// Contexto de base de datos para Minimarket Jade (SQL Server).
-/// Conexión configurada en appsettings; aquí se registran las entidades (ej: Categoria).
+/// Conexión configurada en appsettings; aquí se registran las entidades.
 /// </summary>
-public class AppDbContext : DbContext
 public partial class AppDbContext : DbContext
 {
     public AppDbContext()
@@ -20,7 +19,6 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
-    public virtual DbSet<Categoria> Categoria { get; set; }
 
     public virtual DbSet<ArqueoCaja> ArqueoCajas { get; set; }
 
@@ -36,14 +34,14 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<NotaVentum> NotaVenta { get; set; }
 
-    /// <summary>Tabla Categoria: categorías de productos con jerarquía (padre/hijos).</summary>
-    public DbSet<Categoria> Categorias => Set<Categoria>();
     public virtual DbSet<Producto> Productos { get; set; }
 
-    /// <summary>Tabla Usuario: usuarios del sistema para login (nombre_usuario, contraseña_hash, rol).</summary>
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public virtual DbSet<Proveedor> Proveedors { get; set; }
 
+    /// <summary>Tabla Categoria: categorías de productos con jerarquía (padre/hijos).</summary>
+    public virtual DbSet<Categoria> Categorias { get; set; }
+
+    /// <summary>Tabla Usuario: usuarios del sistema para login.</summary>
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     public virtual DbSet<Ventum> Venta { get; set; }
@@ -52,22 +50,21 @@ public partial class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Mapeo de Usuario: columnas id_usuario, nombre_usuario, contraseña_hash, rol, activo (script 01_CreateTables.sql).
-        modelBuilder.Entity<Usuario>(e =>
-        {
-            e.ToTable("Usuario");
-            e.HasKey(x => x.IdUsuario);
-            e.Property(x => x.IdUsuario).HasColumnName("id_usuario");
-            e.Property(x => x.NombreUsuario).HasMaxLength(50).HasColumnName("nombre_usuario");
-            e.Property(x => x.ContraseñaHash).HasMaxLength(256).HasColumnName("contraseña_hash");
-            e.Property(x => x.Rol).HasMaxLength(20).HasColumnName("rol");
-            e.Property(x => x.Activo).HasColumnName("activo");
-        });
-
-        // Mapeo de Categoria: nombres de columnas coinciden con el script SQL (id_categoria, nombre, id_categoria_padre).
-        // Relación recursiva: una categoría puede tener una categoría padre y varias subcategorías (árbol de categorías).
-        modelBuilder.Entity<Categoria>(e =>
         modelBuilder.UseCollation("Latin1_General_CI_AI");
+
+        // Mapeo de Categoria: jerarquía padre/hijos (id_categoria, nombre, id_categoria_padre).
+        modelBuilder.Entity<Categoria>(e =>
+        {
+            e.ToTable("Categoria");
+            e.HasKey(x => x.IdCategoria);
+            e.Property(x => x.IdCategoria).HasColumnName("id_categoria");
+            e.Property(x => x.Nombre).HasMaxLength(100).HasColumnName("nombre");
+            e.Property(x => x.IdCategoriaPadre).HasColumnName("id_categoria_padre");
+            e.HasOne(x => x.CategoriaPadre)
+                .WithMany(x => x.Subcategorias)
+                .HasForeignKey(x => x.IdCategoriaPadre)
+                .IsRequired(false);
+        });
 
         modelBuilder.Entity<ArqueoCaja>(entity =>
         {
@@ -359,15 +356,6 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<Ventum>(entity =>
         {
-            e.ToTable("Categoria");
-            e.HasKey(x => x.IdCategoria);
-            e.Property(x => x.IdCategoria).HasColumnName("id_categoria");
-            e.Property(x => x.Nombre).HasMaxLength(100).HasColumnName("nombre");
-            e.Property(x => x.IdCategoriaPadre).HasColumnName("id_categoria_padre");
-            e.HasOne(x => x.CategoriaPadre)
-                .WithMany(x => x.Subcategorias)
-                .HasForeignKey(x => x.IdCategoriaPadre)
-                .IsRequired(false);
             entity.HasKey(e => e.IdVenta);
 
             entity.HasIndex(e => e.FechaHora, "IX_Venta_fecha_hora");

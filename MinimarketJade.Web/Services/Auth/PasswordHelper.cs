@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MinimarketJade.Web.Services;
+namespace MinimarketJade.Web.Services.Auth;
 
 /// <summary>
 /// Genera y verifica el hash de contraseñas (SHA256 + Base64).

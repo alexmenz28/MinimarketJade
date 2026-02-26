@@ -1,7 +1,7 @@
 @page "/productos"
 @using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Models
 @using MinimarketJade.Web.Services
-@using MinimarketJade.Web.Services.Categorias
 @using MinimarketJade.Web.Helpers
 @inject IProductoService ProductoService
 @inject ICategoriaService CategoriaService
@@ -245,7 +245,7 @@
 @code {
     @* Variables y Estados *@
     private List<Producto> productos = new();
-    private List<Categoria> categorias = new();
+    private IReadOnlyList<CategoriaDto> categorias = Array.Empty<CategoriaDto>();
     private Producto productoActual = new();
     private bool mostrarModal = false;
     private bool mostrarDetallesModal = false;

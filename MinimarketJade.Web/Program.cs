@@ -1,22 +1,16 @@
 using MinimarketJade.Web.Components;
 using MinimarketJade.Web.Data;
 using MinimarketJade.Web.Data.Entities;
-using MinimarketJade.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using MinimarketJade.Web.Services.Auth;
 using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Clientes;
+using MinimarketJade.Web.Services.Productos;
 using MinimarketJade.Web.Services.Proveedores;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Base de datos (SQL Server)
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Servicio de categorías: el frontend lo inyecta (ICategoriaService) para listar y gestionar la jerarquía de categorías.
-builder.Services.AddScoped<ICategoriaService, CategoriaService>();
-//Leemos la cadena desde appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
