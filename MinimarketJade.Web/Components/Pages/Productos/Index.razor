@@ -17,7 +17,7 @@
         <div class="d-flex gap-2 align-items-center">
             <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="width:300px;">
                 <input type="text" class="form-control border-0 ps-3"
-                       placeholder="Buscar nombre, código o categoría..."
+                       placeholder="Buscar nombre o codigo..."
                        @bind="busqueda" @bind:event="oninput" />
             </div>
             <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirModal">
@@ -26,14 +26,83 @@
         </div>
     </div>
 
+    @* --- BARRA DE FILTROS --- *@
+    <div class="d-flex flex-wrap gap-2 my-3 align-items-center bg-white p-3 rounded-4 shadow-sm border">
+        <span class="small fw-bold text-muted me-2"><i class="bi bi-filter-left me-1"></i>FILTRAR POR:</span>
+
+        @* Dropdown Categorías *@
+        <div class="position-relative">
+            <button class="btn btn-light border shadow-sm dropdown-toggle rounded-pill px-3" type="button"
+                    @onclick="() => { mostrarDropCategoria = !mostrarDropCategoria; mostrarDropEstado = false; }">
+                <i class="bi bi-tag-fill me-2 text-primary"></i>
+                @(idCategoriaFiltro == 0 ? "Todas las Categorías" : categorias.FirstOrDefault(c => c.IdCategoria == idCategoriaFiltro)?.Nombre)
+            </button>
+            @if (mostrarDropCategoria)
+            {
+                <div class="position-absolute bg-white shadow-lg border-0 rounded-4 p-3 mt-1" style="width:280px; z-index:1055;">
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text bg-white"><i class="bi bi-search small"></i></span>
+                        <input type="text" class="form-control" placeholder="Buscar categoría..."
+                               @bind="busquedaCategoria" @bind:event="oninput" />
+                    </div>
+                    <div style="max-height:200px; overflow-y:auto;">
+                        <button class="dropdown-item rounded-3 @(idCategoriaFiltro == 0 ? "active" : "")"
+                                @onclick="() => { idCategoriaFiltro = 0; mostrarDropCategoria = false; }">
+                            Todas las categorías
+                        </button>
+                        <hr class="dropdown-divider" />
+                        @foreach (var cat in CategoriasFiltradasMenu)
+                        {
+                            <button class="dropdown-item rounded-3 @(idCategoriaFiltro == cat.IdCategoria ? "active" : "")"
+                                    @onclick="() => { idCategoriaFiltro = cat.IdCategoria; mostrarDropCategoria = false; }">
+                                @cat.Nombre
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Dropdown Estado *@
+        <div class="position-relative">
+            <button class="btn btn-light border shadow-sm dropdown-toggle rounded-pill px-3" type="button"
+                    @onclick="() => { mostrarDropEstado = !mostrarDropEstado; mostrarDropCategoria = false; }">
+                <i class="bi bi-toggle-on me-2 text-warning"></i>
+                @(estadoFiltro == null ? "Todos los Estados" : (estadoFiltro.Value ? "Solo Activos" : "Solo Inactivos"))
+            </button>
+            @if (mostrarDropEstado)
+            {
+                <div class="position-absolute bg-white shadow-lg rounded-4 p-2 mt-1" style="min-width:180px; z-index:1055;">
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == null ? "active" : "")"
+                            @onclick="() => { estadoFiltro = null; mostrarDropEstado = false; }">
+                        Todos
+                    </button>
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == true ? "active" : "")"
+                            @onclick="() => { estadoFiltro = true; mostrarDropEstado = false; }">
+                        Activos
+                    </button>
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == false ? "active" : "")"
+                            @onclick="() => { estadoFiltro = false; mostrarDropEstado = false; }">
+                        Inactivos
+                    </button>
+                </div>
+            }
+        </div>
+
+        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 ms-auto" @onclick="LimpiarFiltros">
+            <i class="bi bi-trash3 me-1"></i>Limpiar Filtros
+        </button>
+    </div>
+
+    @* --- TABLA --- *@
     <div class="card prod-card p-4">
         @if (productos == null)
         {
             <div class="alert alert-info shadow-sm">Cargando productos...</div>
         }
-        else if (!productos.Any())
+        else if (!ProductosFiltrados.Any())
         {
-            <div class="alert alert-warning shadow-sm">No hay productos registrados.</div>
+            <div class="alert alert-warning shadow-sm">No se encontraron productos con los filtros aplicados.</div>
         }
         else
         {
@@ -68,7 +137,7 @@
                                         @p.StockActual
                                     </span>
                                 </td>
-                                <td><span class="badge bg-light text-dark fw-normal border">@p.Categoria.Nombre</span></td>
+                                <td><span class="badge bg-light text-dark fw-normal border">@(p.Categoria?.Nombre ?? "N/A")</span></td>
                                 <td class="text-center">
                                     @if (p.Activo)
                                     {
@@ -76,7 +145,6 @@
                                     }
                                     else
                                     {
-
                                         <span class="badge rounded-pill bg-danger-subtle text-danger px-3">Inactivo</span>
                                     }
                                 </td>
@@ -109,10 +177,11 @@
     </div>
 </div>
 
+@* --- MODAL: REGISTRO / EDICIÓN --- *@
 @if (mostrarModal)
 {
     <div class="modal fade show d-block modal-blur" tabindex="-1">
-        <div class="modal-dialog modal-prod modal-dialog-centered">
+        <div class="modal-dialog modal-prod modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content modal-prod-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white border-0">
                     <h5 class="modal-title fw-bold"><i class="bi bi-box-seam me-2"></i>@(esEdicion ? "Editar Producto" : "Registrar Nuevo Producto")</h5>
@@ -150,6 +219,7 @@
                                 <InputText class="form-control shadow-sm" @bind-Value="producto.Nombre" />
                                 <label class="form-label fw-bold mt-2">Categoría</label>
                                 <InputSelect class="form-select shadow-sm" @bind-Value="producto.IdCategoria">
+                                    <option value="0">Seleccione una categoría...</option>
                                     @foreach (var cat in categorias)
                                     {
                                         <option value="@cat.IdCategoria">@cat.Nombre</option>
@@ -202,10 +272,11 @@
     </div>
 }
 
+@* --- MODAL: DETALLE --- *@
 @if (mostrarDetalle)
 {
     <div class="modal fade show d-block modal-blur" tabindex="-1">
-        <div class="modal-dialog modal-prod modal-dialog-centered">
+        <div class="modal-dialog modal-prod modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content modal-prod-content border-0 shadow-lg">
                 <div class="modal-header bg-info text-white border-0">
                     <h5 class="modal-title fw-bold"><i class="bi bi-clipboard-data me-2"></i>Ficha del Producto</h5>

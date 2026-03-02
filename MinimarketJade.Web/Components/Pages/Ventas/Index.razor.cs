@@ -11,6 +11,8 @@ public partial class Index : ComponentBase
     [Inject] private IClienteService ClienteService { get; set; } = default!;
     [Inject] private IProductoService ProductoService { get; set; } = default!;
     [Inject] private INotaVentaService NotaVentaService { get; set; } = default!;
+    [Inject] private IMovInventarioService MovInventarioService { get; set; } = default!;
+
 
     private List<Ventum> ventas = new();
     private List<Cliente> clientes = new();
@@ -73,7 +75,7 @@ public partial class Index : ComponentBase
         busquedaVenta = "";
     }
 
-    //Falta_ : Que el IdVendedor sea dinamico , no fijo
+    //Falta Login : Que el IdVendedor sea dinamico , no fijo
     private void AbrirModal()
     {
         venta = new Ventum { FechaHora = DateTime.Now, IdVendedor = 3, MetodoPago = "Efectivo", Anulada = false };
@@ -166,8 +168,22 @@ public partial class Index : ComponentBase
         }).ToList();
 
         if (!esAnulada)
+        {
             foreach (var item in carrito)
+            {
                 await ProductoService.ActualizarStockAsync(item.IdProducto, item.Cantidad);
+                await MovInventarioService.RegistrarAsync(
+                    idProducto: item.IdProducto,
+                    tipoMovimiento: "Salida",
+                    cantidad: item.Cantidad,
+                    idUsuario: venta.IdVendedor,
+                    motivo: $"Venta registrada"
+                );
+            }
+        }
+        
+        //Falta reconocer compras
+        //---
 
         await VentaService.AddAsync(venta);
 

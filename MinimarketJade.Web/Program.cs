@@ -25,6 +25,8 @@ builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IProveedorService, ProveedorService>();
 builder.Services.AddScoped<IVentaService, VentaService>();
 builder.Services.AddScoped<INotaVentaService, NotaVentaService>();
+builder.Services.AddScoped<IMovInventarioService, MovInventarioService>();
+
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

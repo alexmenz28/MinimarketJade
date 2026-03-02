@@ -14,20 +14,33 @@ public partial class Index : ComponentBase
     private List<Producto> productos = new();
     private List<Categoria> categorias = new();
     private Producto producto = new();
+
+    // Interfaces
     private bool mostrarModal = false;
     private bool mostrarDetalle = false;
     private bool esEdicion = false;
     private string? error;
-    private string busqueda = "";
 
-    private IEnumerable<Producto> ProductosFiltrados =>
-        string.IsNullOrWhiteSpace(busqueda)
-            ? productos.OrderByDescending(p => p.Activo)
-            : productos.Where(p =>
-                (p.Nombre?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (p.CodigoBarras?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (p.Categoria?.Nombre?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ?? false))
-              .OrderByDescending(p => p.Activo);
+    // Tabla Principal
+    private string busqueda = "";
+    private int idCategoriaFiltro = 0;  
+    private bool? estadoFiltro = null;
+    private bool mostrarDropCategoria = false;
+    private bool mostrarDropEstado = false;
+
+    private string busquedaCategoria = "";
+
+    private IEnumerable<Producto> ProductosFiltrados => productos
+        .Where(p => idCategoriaFiltro == 0 || p.IdCategoria == idCategoriaFiltro)
+        .Where(p => !estadoFiltro.HasValue || p.Activo == estadoFiltro.Value)
+        .Where(p => string.IsNullOrWhiteSpace(busqueda) ||
+            (p.Nombre?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (p.CodigoBarras?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderByDescending(p => p.Activo);
+
+    private IEnumerable<Categoria> CategoriasFiltradasMenu => categorias
+        .Where(c => string.IsNullOrWhiteSpace(busquedaCategoria) ||
+               c.Nombre.Contains(busquedaCategoria, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await CargarDatos();
 
@@ -37,19 +50,36 @@ public partial class Index : ComponentBase
         categorias = await CategoriaService.GetAllAsync();
     }
 
+    private void LimpiarFiltros()
+    {
+        busqueda = "";
+        idCategoriaFiltro = 0;
+        estadoFiltro = null;
+        busquedaCategoria = "";
+        mostrarDropCategoria = false;
+        mostrarDropEstado = false;
+    }
+
     private void GenerarCodigo()
     {
+        error = null;
         var random = new Random();
-        string codigo = "777";
-        for (int i = 0; i < 6; i++) codigo += random.Next(0, 10);
-        producto.CodigoBarras = codigo;
+        string nuevoCodigo;
+        bool existe;
+        do
+        {
+            nuevoCodigo = "777";
+            for (int i = 0; i < 6; i++) nuevoCodigo += random.Next(0, 10);
+            existe = productos.Any(p => p.CodigoBarras == nuevoCodigo);
+        } while (existe);
+        producto.CodigoBarras = nuevoCodigo;
     }
 
     private void AbrirModal()
     {
         error = null;
         esEdicion = false;
-        producto = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 0, CodigoBarras = "", IdCategoria = 1 };
+        producto = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 5, CodigoBarras = "", IdCategoria = 1 };
         mostrarModal = true;
     }
 
@@ -80,23 +110,38 @@ public partial class Index : ComponentBase
         mostrarModal = true;
     }
 
-    private void CerrarModal() => mostrarModal = false;
+    private void CerrarModal()
+    {
+        error = null;
+        mostrarModal = false;
+    }
 
     private async Task Guardar()
     {
         error = null;
-        bool existe = await ProductoService.ExisteNombreAsync(producto.Nombre, producto.IdProducto);
-        if (existe)
+
+        if (string.IsNullOrWhiteSpace(producto.Nombre)) { error = "⚠ El nombre es obligatorio."; return; }
+        if (string.IsNullOrWhiteSpace(producto.CodigoBarras)) { error = "⚠ El código de barras es obligatorio. Usa 'Generar'."; return; }
+        if (producto.PrecioCompra <= 0) { error = "⚠ El precio de compra debe ser mayor a 0."; return; }
+        if (producto.PrecioVenta <= 0) { error = "⚠ El precio de venta debe ser mayor a 0."; return; }
+        if (producto.StockActual < 0) { error = "⚠ El stock no puede ser negativo."; return; }
+        if (producto.IdCategoria <= 0) { error = "⚠ Debes seleccionar una categoría válida."; return; }
+
+        try
         {
-            error = $"El nombre '{producto.Nombre}' ya existe. Elige uno diferente.";
-            return;
+            bool existe = await ProductoService.ExisteNombreAsync(producto.Nombre, producto.IdProducto);
+            if (existe) { error = $"⚠ El producto '{producto.Nombre}' ya existe."; return; }
+
+            if (esEdicion) await ProductoService.UpdateAsync(producto);
+            else await ProductoService.AddAsync(producto);
+
+            mostrarModal = false;
+            await CargarDatos();
         }
-
-        if (esEdicion) await ProductoService.UpdateAsync(producto);
-        else await ProductoService.AddAsync(producto);
-
-        mostrarModal = false;
-        await CargarDatos();
+        catch (Exception ex)
+        {
+            error = "❌ Error al conectar con la base de datos: " + ex.Message;
+        }
     }
 
     private async Task InhabilitarProducto(Producto p)
