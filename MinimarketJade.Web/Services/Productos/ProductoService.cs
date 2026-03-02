@@ -61,4 +61,16 @@ public class ProductoService : IProductoService
             await _db.SaveChangesAsync();
         }
     }
+
+    public async Task ActualizarStockAsync(int idProducto, int cantidad, CancellationToken ct = default)
+    {
+        var producto = await _db.Productos.FindAsync(new object[] { idProducto }, ct);
+        if (producto != null)
+        {
+            // Restamos la cantidad del stock actual
+            producto.StockActual -= cantidad;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
 }

@@ -8,6 +8,69 @@
 
 <h2>Clientes</h2>
 
+<button class="btn btn-primary mb-3" @onclick="NuevoCliente">
+    Nuevo Cliente
+</button>
+
+@if (mostrarFormulario)
+{
+    <div class="modal fade show d-block" style="background-color:rgba(0,0,0,0.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        @(clienteActual.IdCliente == 0 ? "Nuevo Cliente" : "Editar Cliente")
+                    </h5>
+                    <button class="btn-close" @onclick="Cancelar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <EditForm Model="clienteActual" OnValidSubmit="Guardar">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-2">
+                            <label>Documento</label>
+                            <InputText class="form-control" @bind-Value="clienteActual.DocumentoIdentidad" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Nombre</label>
+                            <InputText class="form-control" @bind-Value="clienteActual.NombreCompleto" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Teléfono</label>
+                            <InputText class="form-control" @bind-Value="clienteActual.Telefono" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Email</label>
+                            <InputText class="form-control" @bind-Value="clienteActual.Email" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Dirección</label>
+                            <InputText class="form-control" @bind-Value="clienteActual.Direccion" />
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                Guardar
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
 @if (clientes == null)
 {
     <p>Cargando clientes...</p>
@@ -21,16 +84,35 @@ else
                 <th>Nombre</th>
                 <th>Teléfono</th>
                 <th>Email</th>
+                <th>Estado</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var c in clientes)
             {
-                <tr>
+                var estaDeshabilitado = clientesDeshabilitados.Contains(c.IdCliente);
+
+                <tr class="@(estaDeshabilitado ? "table-secondary" : "")">
                     <td>@c.DocumentoIdentidad</td>
                     <td>@c.NombreCompleto</td>
                     <td>@c.Telefono</td>
                     <td>@c.Email</td>
+                    <td>
+                        @(estaDeshabilitado ? "Deshabilitado" : "Activo")
+                    </td>
+                    <td>
+                        <button class="btn btn-warning btn-sm me-2"
+                                @onclick="() => Editar(c)"
+                                disabled="@estaDeshabilitado">
+                            Editar
+                        </button>
+
+                        <button class="btn @(estaDeshabilitado ? "btn-success" : "btn-danger") btn-sm"
+                                @onclick="() => CambiarEstado(c.IdCliente)">
+                            @(estaDeshabilitado ? "Habilitar" : "Deshabilitar")
+                        </button>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -38,10 +120,66 @@ else
 }
 
 @code {
+
     private List<Cliente>? clientes;
+    private Cliente clienteActual = new();
+    private bool mostrarFormulario = false;
+
+    // Lista local SOLO visual
+    private List<int> clientesDeshabilitados = new();
 
     protected override async Task OnInitializedAsync()
     {
+        await CargarClientes();
+    }
+
+    private async Task CargarClientes()
+    {
         clientes = await ClienteService.ObtenerTodosAsync();
+    }
+
+    private void NuevoCliente()
+    {
+        clienteActual = new Cliente();
+        mostrarFormulario = true;
+    }
+
+    private void Editar(Cliente cliente)
+    {
+        clienteActual = new Cliente
+        {
+            IdCliente = cliente.IdCliente,
+            DocumentoIdentidad = cliente.DocumentoIdentidad,
+            NombreCompleto = cliente.NombreCompleto,
+            Telefono = cliente.Telefono,
+            Email = cliente.Email,
+            Direccion = cliente.Direccion
+        };
+
+        mostrarFormulario = true;
+    }
+
+    private async Task Guardar()
+    {
+        if (clienteActual.IdCliente == 0)
+            await ClienteService.CrearAsync(clienteActual);
+        else
+            await ClienteService.ActualizarAsync(clienteActual);
+
+        mostrarFormulario = false;
+        await CargarClientes();
+    }
+
+    private void CambiarEstado(int id)
+    {
+        if (clientesDeshabilitados.Contains(id))
+            clientesDeshabilitados.Remove(id);
+        else
+            clientesDeshabilitados.Add(id);
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
     }
 }

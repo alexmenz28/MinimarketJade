@@ -33,8 +33,19 @@ namespace MinimarketJade.Web.Services.Clientes
 
         public async Task ActualizarAsync(Cliente cliente)
         {
-            _context.Clientes.Update(cliente);
-            await _context.SaveChangesAsync();
+            var clienteExistente = await _context.Clientes
+                .FirstOrDefaultAsync(c => c.IdCliente == cliente.IdCliente);
+
+            if (clienteExistente != null)
+            {
+                clienteExistente.DocumentoIdentidad = cliente.DocumentoIdentidad;
+                clienteExistente.NombreCompleto = cliente.NombreCompleto;
+                clienteExistente.Telefono = cliente.Telefono;
+                clienteExistente.Email = cliente.Email;
+                clienteExistente.Direccion = cliente.Direccion;
+
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task EliminarAsync(int id)

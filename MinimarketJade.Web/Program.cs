@@ -7,6 +7,7 @@ using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Clientes;
 using MinimarketJade.Web.Services.Productos;
 using MinimarketJade.Web.Services.Proveedores;
+using MinimarketJade.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,9 @@ builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IProveedorService, ProveedorService>();
+builder.Services.AddScoped<IVentaService, VentaService>();
+builder.Services.AddScoped<INotaVentaService, NotaVentaService>();
+builder.Services.AddScoped<IMovInventarioService, MovInventarioService>();
 
 // Autenticación en memoria (login/logout): estado del usuario actual.
 builder.Services.AddSingleton<AuthService>();

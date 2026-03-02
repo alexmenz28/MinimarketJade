@@ -13,4 +13,5 @@ public interface IProductoService
     Task UpdateAsync(Producto producto);
     Task<bool> ExisteNombreAsync(string nombre, int idActual = 0);
     Task InhabilitarAsync(int id);
+    Task ActualizarStockAsync(int idProducto, int cantidad, CancellationToken ct = default);
 }

@@ -1,6 +1,400 @@
 @page "/ventas"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services
+@using MinimarketJade.Web.Services.Clientes
 @rendermode InteractiveServer
+
 <PageTitle>Ventas - Minimarket Jade</PageTitle>
 
-<h2>Ventas</h2>
-<p>Módulo de registro de ventas y punto de venta (POS).</p>
+<div class="container-fluid mt-3 px-4">
+    <div class="venta-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold m-0 d-flex align-items-center"><i class="bi bi-cart4 me-3"></i>Módulo de Ventas</h2>
+            <p class="m-0 opacity-75 small">Gestión de transacciones e historial</p>
+        </div>
+        <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirModal">
+            <i class="bi bi-plus-circle-fill me-2 text-success"></i>Nueva Venta
+        </button>
+    </div>
+
+    <div class="card pos-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold text-muted text-uppercase small m-0">Historial Reciente</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="width:220px;">
+                    <input type="text" class="form-control border-0 ps-3"
+                           placeholder="Buscar cliente o ticket..."
+                           @bind="busquedaVenta" @bind:event="oninput" />
+                </div>
+                <input type="date" class="form-control form-control-sm border rounded-pill px-3" style="width:160px;"
+                       @bind="fechaDesde" @bind:event="oninput" />
+                <span class="text-muted small">—</span>
+                <input type="date" class="form-control form-control-sm border rounded-pill px-3" style="width:160px;"
+                       @bind="fechaHasta" @bind:event="oninput" />
+                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" @onclick="LimpiarFiltro">
+                    <i class="bi bi-x-circle me-1"></i>Limpiar
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="max-height: 50vh;">
+            <table class="table table-modern align-middle">
+                <thead>
+                    <tr>
+                        <th>FECHA Y HORA</th>
+                        <th>CLIENTE</th>
+                        <th>VENDEDOR</th>
+                        <th class="text-end">TOTAL</th>
+                        <th class="text-center">ESTADO</th>
+                        <th class="text-center">ACCIONES</th>
+                    </tr>
+                </thead>
+                @*Contenido de la tabla Principal*@
+                <tbody>
+                    @foreach (var v in VentasFiltradas)
+                    {
+                        <tr>
+                            <td class="fw-bold text-dark">@v.FechaHora.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded-circle p-2 me-2 d-flex"><i class="bi bi-person text-primary"></i></div>
+                                    <span>@(v.IdClienteNavigation?.NombreCompleto ?? "Público General")</span>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-light text-dark fw-normal border">@v.IdVendedorNavigation.NombreUsuario</span></td>
+                            <td class="text-end fw-bold text-primary">@v.Total.ToString("N2") Bs.</td>
+                            <td class="text-center">
+                                @if (v.Anulada)
+                                {
+                                    <span class="badge rounded-pill bg-danger-subtle text-danger px-3">Anulada</span>
+                                }
+                                else
+                                {
+
+                                    <span class="badge rounded-pill bg-success-subtle text-success px-3">Completada</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-info btn-sm rounded-pill px-3 me-1" @onclick="() => VerDetalle(v.IdVenta)">
+                                    <i class="bi bi-eye me-1"></i>Ver
+                                </button>
+                                @if (!v.Anulada)
+                                {
+                                    <button class="btn btn-outline-danger btn-sm rounded-pill px-3" @onclick="() => Anular(v)">
+                                        <i class="bi bi-x-circle me-1"></i>Anular
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@*Modal de venta*@
+@if (mostrarVenta)
+{
+    <div class="modal fade show d-block modal-blur" style="z-index:1050;" tabindex="-1">
+        <div class="modal-dialog modal-pos-size modal-dialog-centered">
+            <div class="modal-content modal-pos-content border-0 shadow-lg">
+
+                <div class="modal-header border-0 pb-0 flex-shrink-0">
+                    <h5 class="fw-bold d-flex align-items-center"><i class="bi bi-terminal-fill me-2 text-primary"></i>Terminal de Venta</h5>
+                    @*<button type="button" class="btn-close" @onclick="() => mostrarVenta = false"></button>*@
+                </div>
+
+                <div class="modal-body">
+                    <div class="pos-layout">
+
+                        @* Carrito *@
+                        <div class="pos-left">
+                            <div class="card border-0 bg-white rounded-4 shadow-sm p-3 d-flex flex-column h-100">
+
+                                @if (!string.IsNullOrEmpty(alertaStock))
+                                {
+                                    <div class="alert alert-warning py-2 px-3 mb-2 d-flex align-items-center" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        <span>@alertaStock</span>
+                                        <button type="button" class="btn-close btn-sm ms-auto" @onclick="() => alertaStock = null"></button>
+                                    </div>
+                                }
+
+                                <div class="cart-scroll">
+                                    <table class="table align-middle mb-0">
+                                        <thead class="small text-muted sticky-top bg-white">
+                                            <tr>
+                                                <th>PRODUCTO</th>
+                                                <th class="text-center" style="width:130px;">CANTIDAD</th>
+                                                <th class="text-end">PRECIO</th>
+                                                <th class="text-end">SUBTOTAL</th>
+                                                <th style="width:40px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in carrito)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="fw-bold text-dark">@item.IdProductoNavigation.Nombre</div>
+                                                        <small class="text-muted">@item.PrecioUnitario.ToString("N2") Bs.</small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                                            <button class="btn-qty" type="button" @onclick="() => ModificarCantidad(item, -1)">−</button>
+                                                            <span class="fw-bold" style="min-width:24px;text-align:center;">@item.Cantidad</span>
+                                                            <button class="btn-qty" type="button" @onclick="() => ModificarCantidad(item, 1)">+</button>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-end">@item.PrecioUnitario.ToString("N2")</td>
+                                                    <td class="text-end fw-bold text-primary">@item.Subtotal.ToString("N2")</td>
+                                                   
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-2 pt-2 border-top flex-shrink-0">
+                                    <div class="input-group shadow-sm rounded-4 overflow-hidden border">
+                                        <span class="input-group-text bg-white border-0"><i class="bi bi-upc-scan text-primary"></i></span>
+                                        <select class="form-select border-0 fs-6" @bind="idProducto">
+                                            <option value="0">Escoge un producto...</option>
+                                            @foreach (var prod in productos.Where(p => p.Activo))
+                                            {
+                                                <option value="@prod.IdProducto">@prod.Nombre (Stock: @prod.StockActual)</option>
+                                            }
+                                        </select>
+                                        <button class="btn btn-primary px-4 fw-bold" type="button" @onclick="Agregar">AÑADIR</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Pago *@
+                        <div class="pos-right">
+                            <div class="card border-0 bg-white rounded-4 shadow-sm p-3 d-flex flex-column h-100 justify-content-between">
+                                <div>
+                                    <label class="fw-bold small text-muted text-uppercase mb-1">Cliente</label>
+                                    <div class="d-flex align-items-center p-2 border rounded-4 mb-2 bg-light" style="cursor:pointer;" @onclick="() => mostrarClientes = true">
+                                        <div class="bg-primary text-white rounded-circle p-2 me-2 d-flex flex-shrink-0"><i class="bi bi-person-fill"></i></div>
+                                        <div class="overflow-hidden">
+                                            <div class="fw-bold text-truncate small">@(clienteSeleccionado?.NombreCompleto ?? "Público General")</div>
+                                            <small class="text-muted" style="font-size:10px;">@(clienteSeleccionado?.DocumentoIdentidad ?? "---")</small>
+                                        </div>
+                                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                                    </div>
+
+                                    <label class="fw-bold small text-muted text-uppercase mb-1">Método de Pago</label>
+                                    <div class="metodo-pago-group mb-2 shadow-sm">
+                                        <input type="radio" class="btn-check" name="btnpago" id="p_efec" checked @onclick='() => venta.MetodoPago = "Efectivo"'>
+                                        <label class="btn btn-outline-primary btn-sm" for="p_efec">Efectivo</label>
+                                        <input type="radio" class="btn-check" name="btnpago" id="p_qr" @onclick='() => venta.MetodoPago = "QR"'>
+                                        <label class="btn btn-outline-primary btn-sm" for="p_qr">QR</label>
+                                    </div>
+
+                                    <div class="total-box mb-2 shadow-sm">
+                                        <div class="small opacity-75 fw-bold mb-0">TOTAL A PAGAR</div>
+                                        <div class="h3 fw-bold m-0">@Total.ToString("N2") <span class="fs-6">Bs.</span></div>
+                                    </div>
+
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">RECIBIDO</label>
+                                            <input type="number" class="form-control form-control-sm fw-bold border-primary" @bind="montoRecibido" @bind:event="oninput" />
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <label class="small fw-bold text-muted">CAMBIO</label>
+                                            <div class="h5 fw-bold text-primary m-0 pt-1">@Cambio.ToString("N2")</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-top">
+                                    <button class="btn btn-success w-100 py-2 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center" type="button"
+                                            @onclick="() => Guardar(false)"
+                                            disabled="@(montoRecibido < Total || !carrito.Any())">
+                                        <i class="bi bi-check2-all me-2"></i>FINALIZAR
+                                    </button>
+                                    <button class="btn btn-link btn-sm text-danger mt-1 w-100" type="button" @onclick="Cancelar">Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@*Modal Clientes en Venta*@
+@if (mostrarClientes)
+{
+    <div class="modal fade show d-block modal-blur" style="z-index:1060;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 p-4 pb-0 d-flex justify-content-between align-items-center">
+                    <h5 class="modal-title fw-bold">Seleccionar Cliente</h5>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button class="btn btn-outline-success btn-sm rounded-pill px-3" @onclick="() => mostrarFormCliente = !mostrarFormCliente">
+                            <i class="bi bi-person-plus me-1"></i>Nuevo
+                        </button>
+                        <button type="button" class="btn-close" @onclick="() => { mostrarClientes = false; mostrarFormCliente = false; }"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-4">
+                    @if (mostrarFormCliente)
+                    {
+                        <div class="border rounded-4 p-3 mb-3 bg-light">
+                            <p class="fw-bold small text-muted text-uppercase mb-2">Registro Rápido</p>
+                            @if (!string.IsNullOrEmpty(errorCliente))
+                            {
+                                <div class="alert alert-danger py-2 small">@errorCliente</div>
+                            }
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Documento de Identidad</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="Ej: 12345678"
+                                       @bind="nuevoCI" @bind:event="oninput" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Nombre Completo</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="Ej: Juan Pérez"
+                                       @bind="nuevoNombre" @bind:event="oninput" />
+                            </div>
+                            <button class="btn btn-success btn-sm rounded-pill px-4 w-100" @onclick="RegistrarCliente"
+                                    disabled="@(string.IsNullOrWhiteSpace(nuevoCI) || string.IsNullOrWhiteSpace(nuevoNombre))">
+                                <i class="bi bi-check2 me-1"></i>Registrar y Seleccionar
+                            </button>
+                        </div>
+                    }
+                    <div class="input-group mb-3 shadow-sm rounded-pill overflow-hidden border">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-0" placeholder="Buscar por nombre o CI..."
+                               @bind="filtroCliente" @bind:event="oninput" autofocus />
+                    </div>
+                    <div class="list-group list-group-flush overflow-auto" style="max-height:260px;">
+                        <button class="list-group-item list-group-item-action d-flex align-items-center py-2 @(clienteSeleccionado == null ? "active" : "")"
+                                @onclick="() => SeleccionarCliente(null)">
+                            <div class="bg-light text-dark rounded-circle p-2 me-3 d-flex"><i class="bi bi-people-fill"></i></div>
+                            <div class="fw-bold">Público General</div>
+                        </button>
+                        @foreach (var cli in ClientesFiltrados)
+                        {
+                            <button class="list-group-item list-group-item-action d-flex align-items-center py-2 @(clienteSeleccionado?.IdCliente == cli.IdCliente ? "active" : "")"
+                                    @onclick="() => SeleccionarCliente(cli)">
+                                <div class="bg-light text-dark rounded-circle p-2 me-3 d-flex"><i class="bi bi-person"></i></div>
+                                <div>
+                                    <div class="fw-bold">@cli.NombreCompleto</div>
+                                    <small class="opacity-75">CI: @cli.DocumentoIdentidad</small>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@*Nota De venta*@
+@if (mostrarDetalle && ventaDetalle != null)
+{
+    <div class="modal fade show d-block modal-blur" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title fw-bold">Comprobante de Venta</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarDetalle"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <div class="text-center mb-3 border-bottom pb-3">
+                        <h4 class="fw-bold text-uppercase m-0">Minimarket Jade</h4>
+                        <p class="text-muted small m-0">@ventaDetalle.FechaHora.ToString("dd MMMM yyyy, HH:mm")</p>
+                        @if (notaDetalle != null)
+                        {
+                            <span class="badge bg-secondary rounded-pill px-3 mt-1">🎫 @notaDetalle.NumeroTicket</span>
+                        }
+                        <div class="mt-1">
+                            @if (ventaDetalle.Anulada)
+                            {
+                                <span class="badge bg-danger rounded-pill px-3">ANULADA</span>
+                            }
+                            else
+                            {
+
+                                <span class="badge bg-success rounded-pill px-3">COMPLETADA</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light rounded-3 p-2">
+                                <div class="small text-muted">Cliente</div>
+                                <div class="fw-bold small">@(ventaDetalle.IdClienteNavigation?.NombreCompleto ?? "Público General")</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded-3 p-2">
+                                <div class="small text-muted">Vendedor</div>
+                                <div class="fw-bold small">@ventaDetalle.IdVendedorNavigation?.NombreUsuario</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded-3 p-2">
+                                <div class="small text-muted">Método de Pago</div>
+                                <div class="fw-bold small">@ventaDetalle.MetodoPago</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded-3 p-2">
+                                <div class="small text-muted">Monto Recibido</div>
+                                <div class="fw-bold small">@ventaDetalle.MontoRecibido?.ToString("N2") Bs.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <table class="table table-sm table-borderless mb-3">
+                        <thead class="border-bottom">
+                            <tr class="small text-muted fw-bold">
+                                <th>DESCRIPCIÓN</th>
+                                <th class="text-center">CANT.</th>
+                                <th class="text-end">P. UNIT.</th>
+                                <th class="text-end">SUBTOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var d in ventaDetalle.DetalleVenta)
+                            {
+                                <tr>
+                                    <td>@(d.IdProductoNavigation?.Nombre)</td>
+                                    <td class="text-center">@d.Cantidad</td>
+                                    <td class="text-end text-muted">@d.PrecioUnitario.ToString("N2")</td>
+                                    <td class="text-end fw-bold">@d.Subtotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="bg-light p-3 rounded-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Subtotal</span>
+                            <span class="small">@ventaDetalle.Subtotal.ToString("N2") Bs.</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-2 mt-1 fs-5 fw-bold text-primary">
+                            <span>TOTAL</span>
+                            <span>@ventaDetalle.Total.ToString("N2") Bs.</span>
+                        </div>
+                        @if (ventaDetalle.Cambio > 0)
+                        {
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="text-muted small">Cambio</span>
+                                <span class="small text-success fw-bold">@ventaDetalle.Cambio?.ToString("N2") Bs.</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4">
+                    <button class="btn btn-secondary w-100 rounded-pill py-2 fw-bold shadow-sm" @onclick="CerrarDetalle">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
