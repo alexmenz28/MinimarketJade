@@ -23,7 +23,8 @@ builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IProveedorService, ProveedorService>();
-
+builder.Services.AddScoped<IVentaService, VentaService>();
+builder.Services.AddScoped<INotaVentaService, NotaVentaService>();
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

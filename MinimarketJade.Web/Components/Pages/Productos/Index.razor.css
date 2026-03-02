@@ -1,0 +1,98 @@
+﻿::deep .prod-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-bottom: 4px solid #4361ee;
+}
+
+::deep .prod-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+}
+
+::deep .table-modern {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+
+    ::deep .table-modern thead th {
+        border: none;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 0.75rem;
+        color: #64748b;
+    }
+
+    ::deep .table-modern tbody tr {
+        background-color: white;
+        transition: all 0.2s ease;
+    }
+
+        ::deep .table-modern tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+        }
+
+    ::deep .table-modern td {
+        padding: 0.75rem;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+::deep .fila-inactiva {
+    opacity: 0.55;
+}
+
+::deep .modal-prod {
+    max-width: 860px;
+    width: 95vw;
+    margin: 1vh auto;
+}
+
+::deep .modal-prod-content {
+    height: 94vh;
+    max-height: 94vh;
+    overflow: hidden;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+    ::deep .modal-prod-content .modal-header {
+        flex-shrink: 0;
+    }
+
+    ::deep .modal-prod-content .modal-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 1.25rem 1.5rem;
+    }
+
+        ::deep .modal-prod-content .modal-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::deep .modal-prod-content .modal-body::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+    ::deep .modal-prod-content .modal-footer {
+        flex-shrink: 0;
+    }
+
+::deep .modal-blur {
+    backdrop-filter: blur(8px);
+    background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+::deep .bi {
+    vertical-align: middle;
+}
