@@ -35,6 +35,13 @@ else
                            @bind:event="oninput" />
                 </div>
             </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="filtroEstado">
+                    <option value="">Todos los estados</option>
+                    <option value="true">Solo activos</option>
+                    <option value="false">Solo inactivos</option>
+                </select>
+            </div>
         </div>
 
         @if (!string.IsNullOrEmpty(mensajeError))
@@ -194,6 +201,7 @@ else
 @code {
     private List<Usuario> usuarios = new();
     private string textoBusqueda = string.Empty;
+    private string filtroEstado = ""; // "" = Todos, "true" = Activos, "false" = Inactivos
     private string? mensajeError;
     private string? mensajeOk;
 
@@ -231,6 +239,7 @@ else
 
     private IEnumerable<Usuario> UsuariosFiltrados =>
         usuarios
+            .Where(u => string.IsNullOrEmpty(filtroEstado) || (filtroEstado == "true" && u.Activo) || (filtroEstado == "false" && !u.Activo))
             .Where(u =>
                 string.IsNullOrWhiteSpace(textoBusqueda)
                 || u.NombreUsuario.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));

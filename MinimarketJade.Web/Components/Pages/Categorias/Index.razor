@@ -1,0 +1,244 @@
+@page "/categorias"
+@rendermode InteractiveServer
+@layout MainLayout
+@using MinimarketJade.Web.Models
+@using MinimarketJade.Web.Services.Categorias
+@inject ICategoriaService CategoriaService
+@inject IJSRuntime JS
+
+<PageTitle>Categorías - Minimarket Jade</PageTitle>
+
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Gestión de categorías</h3>
+        <button class="btn btn-primary" @onclick="AbrirModalCrear">Nueva categoría</button>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-white">🔍</span>
+                <input class="form-control" placeholder="Buscar por nombre..." @bind="textoBusqueda" @bind:event="oninput" />
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger">@mensajeError</div>
+    }
+    @if (!string.IsNullOrEmpty(mensajeOk))
+    {
+        <div class="alert alert-success">@mensajeOk</div>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre</th>
+                    <th>Categoría padre</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in CategoriasFiltradas)
+                {
+                    <tr>
+                        <td>@c.IdCategoria</td>
+                        <td>@c.Nombre</td>
+                        <td>@(c.IdCategoriaPadre.HasValue ? NombrePadre(c.IdCategoriaPadre.Value) : "—")</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-warning me-1" @onclick="() => AbrirModalEditar(c)">Editar</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => AbrirModalEliminar(c)">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (!categorias.Any())
+    {
+        <div class="alert alert-info">No hay categorías. Cree una para usarlas en productos.</div>
+    }
+</div>
+
+@* Modal Crear / Editar *@
+@if (mostrarModalForm)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(esEdicion ? "Editar categoría" : "Nueva categoría")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input class="form-control" @bind="formNombre" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categoría padre (opcional)</label>
+                        <select class="form-select" @bind="formIdPadre">
+                            <option value="">— Sin padre (raíz) —</option>
+                            @foreach (var cat in categorias.Where(x => x.IdCategoria != categoriaEditando?.IdCategoria))
+                            {
+                                <option value="@cat.IdCategoria">@cat.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="GuardarCategoria">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Eliminar *@
+@if (mostrarModalEliminar && categoriaEliminar is not null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Eliminar categoría</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    ¿Eliminar la categoría <strong>@categoriaEliminar.Nombre</strong>? No se puede eliminar si tiene subcategorías.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-danger" @onclick="EliminarConfirmado">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<CategoriaDto> categorias = Array.Empty<CategoriaDto>();
+    private string textoBusqueda = "";
+    private string? mensajeError;
+    private string? mensajeOk;
+
+    private bool mostrarModalForm;
+    private bool mostrarModalEliminar;
+    private bool esEdicion;
+    private CategoriaDto? categoriaEditando;
+    private CategoriaDto? categoriaEliminar;
+    private string formNombre = "";
+    private string formIdPadre = "";
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        categorias = await CategoriaService.GetAllAsync();
+    }
+
+    private IEnumerable<CategoriaDto> CategoriasFiltradas =>
+        categorias.Where(c =>
+            string.IsNullOrWhiteSpace(textoBusqueda) ||
+            (c.Nombre?.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    private string NombrePadre(int idPadre)
+    {
+        var p = categorias.FirstOrDefault(c => c.IdCategoria == idPadre);
+        return p?.Nombre ?? idPadre.ToString();
+    }
+
+    private void AbrirModalCrear()
+    {
+        mensajeError = mensajeOk = null;
+        esEdicion = false;
+        categoriaEditando = null;
+        formNombre = "";
+        formIdPadre = "";
+        mostrarModalForm = true;
+    }
+
+    private void AbrirModalEditar(CategoriaDto c)
+    {
+        mensajeError = mensajeOk = null;
+        esEdicion = true;
+        categoriaEditando = c;
+        formNombre = c.Nombre ?? "";
+        formIdPadre = c.IdCategoriaPadre?.ToString() ?? "";
+        mostrarModalForm = true;
+    }
+
+    private void AbrirModalEliminar(CategoriaDto c)
+    {
+        mensajeError = mensajeOk = null;
+        categoriaEliminar = c;
+        mostrarModalEliminar = true;
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModalForm = mostrarModalEliminar = false;
+        categoriaEditando = categoriaEliminar = null;
+    }
+
+    private async Task GuardarCategoria()
+    {
+        mensajeError = mensajeOk = null;
+        if (string.IsNullOrWhiteSpace(formNombre))
+        {
+            mensajeError = "El nombre es obligatorio.";
+            return;
+        }
+
+        try
+        {
+            int? idPadre = string.IsNullOrWhiteSpace(formIdPadre) ? null : int.TryParse(formIdPadre, out var id) ? id : null;
+            if (esEdicion && categoriaEditando != null)
+            {
+                var dto = new CategoriaDto { Nombre = formNombre.Trim(), IdCategoriaPadre = idPadre };
+                var ok = await CategoriaService.UpdateAsync(categoriaEditando.IdCategoria, dto);
+                if (!ok) { mensajeError = "No se pudo actualizar."; return; }
+                mensajeOk = "Categoría actualizada.";
+            }
+            else
+            {
+                await CategoriaService.CreateAsync(new CategoriaDto { Nombre = formNombre.Trim(), IdCategoriaPadre = idPadre });
+                mensajeOk = "Categoría creada.";
+            }
+            CerrarModales();
+            await Cargar();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = "Error: " + ex.Message;
+        }
+    }
+
+    private async Task EliminarConfirmado()
+    {
+        if (categoriaEliminar == null) return;
+        mensajeError = mensajeOk = null;
+        try
+        {
+            var ok = await CategoriaService.DeleteAsync(categoriaEliminar.IdCategoria);
+            if (!ok)
+            {
+                mensajeError = "No se pudo eliminar. La categoría puede tener subcategorías.";
+                return;
+            }
+            mensajeOk = "Categoría eliminada.";
+            CerrarModales();
+            await Cargar();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = "Error: " + ex.Message;
+        }
+    }
+}
