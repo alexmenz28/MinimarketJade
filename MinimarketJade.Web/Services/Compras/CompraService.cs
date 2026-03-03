@@ -66,6 +66,16 @@ namespace MinimarketJade.Web.Services.Compras
                     throw new InvalidOperationException($"Proveedor con id {compra.IdProveedor} no encontrado.");
                 }
 
+                // Validar unicidad de número de factura si fue proporcionado
+                if (!string.IsNullOrWhiteSpace(compra.NumeroFactura))
+                {
+                    bool existeFactura = await ExisteNumeroFacturaAsync(compra.NumeroFactura);
+                    if (existeFactura)
+                    {
+                        throw new InvalidOperationException($"El número de factura '{compra.NumeroFactura}' ya existe.");
+                    }
+                }
+
                 // Si no se especificó usuario, usar un usuario por defecto (por ejemplo id = 1)
                 if (compra.IdUsuario == 0)
                 {
@@ -95,6 +105,16 @@ namespace MinimarketJade.Web.Services.Compras
                     // Validar cantidad
                     if (det.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor que cero.");
 
+                    // Validar precio de compra
+                    if (det.PrecioUnitario <= 0) throw new InvalidOperationException("El precio unitario debe ser mayor que cero.");
+
+                    // Validar stock resultante (limite opcional)
+                    const int MAX_STOCK = 1_000_000;
+                    if (producto.StockActual + det.Cantidad > MAX_STOCK)
+                    {
+                        throw new InvalidOperationException($"El stock resultante para el producto '{producto.Nombre}' excede el límite permitido ({MAX_STOCK}).");
+                    }
+
                     producto.StockActual += det.Cantidad;
                     // Opcional: actualizar precio_compra si se desea
                     // producto.PrecioCompra = det.PrecioUnitario;
@@ -111,6 +131,12 @@ namespace MinimarketJade.Web.Services.Compras
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<bool> ExisteNumeroFacturaAsync(string numeroFactura)
+        {
+            if (string.IsNullOrWhiteSpace(numeroFactura)) return false;
+            return await _context.Compras.AnyAsync(c => c.NumeroFactura == numeroFactura);
         }
     }
 }

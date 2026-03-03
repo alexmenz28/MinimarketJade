@@ -309,6 +309,12 @@
                 return;
             }
 
+            if (ln.PrecioUnitario <= 0)
+            {
+                await JS.InvokeVoidAsync("alert", "El precio unitario debe ser mayor que cero para todos los productos.");
+                return;
+            }
+
             var det = new DetalleCompra
             {
                 IdProducto = ln.IdProducto,
@@ -317,6 +323,17 @@
                 Subtotal = ln.Cantidad * ln.PrecioUnitario
             };
             detalles.Add(det);
+        }
+
+        // Validar número de factura único (si se ingresó)
+        if (!string.IsNullOrWhiteSpace(compraActual.NumeroFactura))
+        {
+            bool existeFactura = await CompraService.ExisteNumeroFacturaAsync(compraActual.NumeroFactura);
+            if (existeFactura)
+            {
+                await JS.InvokeVoidAsync("alert", $"El número de factura '{compraActual.NumeroFactura}' ya existe. Verifique antes de registrar.");
+                return;
+            }
         }
 
         try

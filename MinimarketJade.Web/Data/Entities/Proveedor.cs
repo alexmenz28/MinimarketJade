@@ -17,6 +17,7 @@ public partial class Proveedor
     public string NitRuc { get; set; } = null!; // mapea a nit_ruc (único)
 
     [MaxLength(20)]
+    [Phone]
     public string? Telefono { get; set; }
 
     [EmailAddress]
