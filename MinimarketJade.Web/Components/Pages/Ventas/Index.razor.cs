@@ -185,7 +185,7 @@ public partial class Index : ComponentBase
                     tipoMovimiento: "Salida",
                     cantidad: item.Cantidad,
                     idUsuario: venta.IdVendedor,
-                    motivo: $"Venta registrada"
+                    motivo: $"Venta registrada - TKT-{DateTime.Now:yyyyMMdd}-{venta.IdVenta:D4}"
                 );
             }
 

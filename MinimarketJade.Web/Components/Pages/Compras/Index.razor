@@ -7,6 +7,9 @@
 @inject IProveedorService ProveedorService
 @inject IProductoService ProductoService
 @inject IJSRuntime JS
+@*Leer el modulo de inventario y auth*@
+@inject IMovInventarioService MovInventarioService
+@inject MinimarketJade.Web.Services.Auth.AuthService AuthService
 @rendermode InteractiveServer
 
 <PageTitle>Compras - Minimarket Jade</PageTitle>
@@ -229,6 +232,8 @@
 
     private decimal Subtotal => lineas.Sum(l => l.Cantidad * l.PrecioUnitario);
     private decimal Total => Subtotal; // sin impuestos
+  
+  
 
     private IEnumerable<Producto> productosFiltrados =>
         productos.Where(p => string.IsNullOrWhiteSpace(textoBusquedaProducto)
@@ -341,6 +346,19 @@
             await CompraService.CrearCompraAsync(compraActual, detalles);
             mostrarModal = false;
             await CargarDatos();
+
+            //Mandar movimientos de Inventario
+            foreach (var ln in lineas)
+            {
+                await MovInventarioService.RegistrarAsync(
+                    idProducto: ln.IdProducto,
+                    tipoMovimiento: "Entrada",
+                    cantidad: ln.Cantidad,
+                    idUsuario: AuthService.CurrentUser!.IdUsuario,
+                    motivo: $"Compra registrada - Factura: {compraActual.NumeroFactura}"
+                );
+            }
+
         }
         catch (Exception ex)
         {
