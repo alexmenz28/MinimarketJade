@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Components;
 using MinimarketJade.Web.Data.Entities;
 using MinimarketJade.Web.Services;
+using MinimarketJade.Web.Services.Auth;
 using MinimarketJade.Web.Services.Clientes;
 using MinimarketJade.Web.Services.Productos;
-using Microsoft.AspNetCore.Components;
 
 namespace MinimarketJade.Web.Components.Pages.Ventas;
 
@@ -13,7 +14,7 @@ public partial class Index : ComponentBase
     [Inject] private IProductoService ProductoService { get; set; } = default!;
     [Inject] private INotaVentaService NotaVentaService { get; set; } = default!;
     [Inject] private IMovInventarioService MovInventarioService { get; set; } = default!;
-
+    [Inject] private AuthService AuthService { get; set; } = default!;
 
     private List<Ventum> ventas = new();
     private List<Cliente> clientes = new();
@@ -56,6 +57,7 @@ public partial class Index : ComponentBase
         c.NombreCompleto.Contains(filtroCliente, StringComparison.OrdinalIgnoreCase) ||
         c.DocumentoIdentidad.Contains(filtroCliente));
 
+    //Totales finales
     private decimal Total => carrito.Sum(i => i.Subtotal);
     private decimal Cambio => montoRecibido > Total ? montoRecibido - Total : 0;
 
@@ -76,10 +78,10 @@ public partial class Index : ComponentBase
         busquedaVenta = "";
     }
 
-    //Falta Login : Que el IdVendedor sea dinamico , no fijo
+    //Inicializar Venta
     private void AbrirModal()
     {
-        venta = new Ventum { FechaHora = DateTime.Now, IdVendedor = 3, MetodoPago = "Efectivo", Anulada = false };
+        venta = new Ventum { FechaHora = DateTime.Now, IdVendedor = AuthService.CurrentUser!.IdUsuario, MetodoPago = "Efectivo", Anulada = false };
         clienteSeleccionado = null;
         carrito.Clear();
         montoRecibido = 0;
@@ -100,20 +102,17 @@ public partial class Index : ComponentBase
     private async Task RegistrarCliente()
     {
         errorCliente = null;
-
         var existe = clientes.Any(c => c.DocumentoIdentidad == nuevoCI.Trim());
         if (existe)
         {
             errorCliente = "Ya existe un cliente con ese CI.";
             return;
         }
-
         var nuevo = new Cliente
         {
             DocumentoIdentidad = nuevoCI.Trim(),
             NombreCompleto = nuevoNombre.Trim()
         };
-
         await ClienteService.CrearAsync(nuevo);
         await CargarDatos();
 
@@ -125,6 +124,7 @@ public partial class Index : ComponentBase
         mostrarFormCliente = false;
     }
 
+    // Agregar producto al carrito
     private void Agregar()
     {
         alertaStock = null;
@@ -135,13 +135,18 @@ public partial class Index : ComponentBase
         var item = carrito.FirstOrDefault(c => c.IdProducto == prod.IdProducto);
         if (prod.StockActual > (item?.Cantidad ?? 0))
         {
-            if (item != null) { item.Cantidad++; item.Subtotal = item.Cantidad * item.PrecioUnitario; }
-            else carrito.Add(new DetalleVentum { IdProducto = prod.IdProducto, IdProductoNavigation = prod, Cantidad = 1, PrecioUnitario = prod.PrecioVenta, Subtotal = prod.PrecioVenta });
+            if (item != null) { 
+                item.Cantidad++; item.Subtotal = item.Cantidad * item.PrecioUnitario;
+            }
+            else carrito.Add(new DetalleVentum { 
+                IdProducto = prod.IdProducto, IdProductoNavigation = prod, Cantidad = 1, PrecioUnitario = prod.PrecioVenta, Subtotal = prod.PrecioVenta 
+            });
             idProducto = 0;
         }
         else alertaStock = $"⚠ Sin stock disponible para \"{prod.Nombre}\".";
     }
 
+    //botones + y - para modificar cantidad en el carrito
     private void ModificarCantidad(DetalleVentum item, int cambio)
     {
         alertaStock = null;
@@ -167,7 +172,9 @@ public partial class Index : ComponentBase
             PrecioUnitario = c.PrecioUnitario,
             Subtotal = c.Subtotal
         }).ToList();
+        await VentaService.AddAsync(venta);
 
+        //Movimiento de inventario si no es anulada
         if (!esAnulada)
         {
             foreach (var item in carrito)
@@ -181,15 +188,7 @@ public partial class Index : ComponentBase
                     motivo: $"Venta registrada"
                 );
             }
-        }
-        
-        //Falta reconocer compras
-        //---
 
-        await VentaService.AddAsync(venta);
-
-        if (!esAnulada)
-        {
             var nota = new NotaVentum
             {
                 IdVenta = venta.IdVenta,
@@ -214,7 +213,16 @@ public partial class Index : ComponentBase
     {
         await VentaService.AnularAsync(v.IdVenta);
         foreach (var d in v.DetalleVenta)
+        {
             await ProductoService.ActualizarStockAsync(d.IdProducto, -d.Cantidad);
+            await MovInventarioService.RegistrarAsync(
+                idProducto: d.IdProducto,
+                tipoMovimiento: "Entrada",
+                cantidad: d.Cantidad,
+                idUsuario: AuthService.CurrentUser!.IdUsuario,
+                motivo: $"Devolución por anulación de venta"
+            );
+        }
         await CargarDatos();
     }
 

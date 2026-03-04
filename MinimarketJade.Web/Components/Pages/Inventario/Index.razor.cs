@@ -1,7 +1,8 @@
+using Microsoft.AspNetCore.Components;
 using MinimarketJade.Web.Data.Entities;
 using MinimarketJade.Web.Services;
+using MinimarketJade.Web.Services.Auth;
 using MinimarketJade.Web.Services.Productos;
-using Microsoft.AspNetCore.Components;
 
 namespace MinimarketJade.Web.Components.Pages.Inventario;
 
@@ -9,6 +10,8 @@ public partial class Index : ComponentBase
 {
     [Inject] private IMovInventarioService MovInventarioService { get; set; } = default!;
     [Inject] private IProductoService ProductoService { get; set; } = default!;
+    [Inject] private AuthService AuthService { get; set; } = default!;
+
 
     private List<MovInventario> movimientos = new();
     private List<Producto> productos = new();
@@ -23,7 +26,7 @@ public partial class Index : ComponentBase
     private bool mostrarAjuste = false;
     private string? errorAjuste;
     private int idProductoAjuste = 0;
-    private string operacion = "sumar";  // "sumar" o "restar"
+    private string operacion = "sumar"; 
     private int cantidadAjuste = 1;
     private string motivoAjuste = "";
 
@@ -85,7 +88,7 @@ public partial class Index : ComponentBase
             idProducto: idProductoAjuste,
             tipoMovimiento: "Ajuste",
             cantidad: cantidadAjuste,
-            idUsuario: 3, // remplazar una vez termindao el auth
+            idUsuario: AuthService.CurrentUser!.IdUsuario,
             motivo: $"{(operacion == "sumar" ? "Ajuste +" : "Ajuste -")}{cantidadAjuste} | {motivoAjuste}"
         );
 

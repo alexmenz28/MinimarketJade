@@ -3,6 +3,7 @@
 @using MinimarketJade.Web.Services
 @rendermode InteractiveServer
 
+
 <PageTitle>Inventario - Minimarket Jade</PageTitle>
 
 <div class="container-fluid mt-3 px-4">
@@ -89,6 +90,12 @@
                                             <i class="bi bi-arrow-up-circle me-1"></i>Salida
                                         </span>
                                     }
+                                    else if (m.TipoMovimiento == "Nuevo")
+                                    {
+                                        <span class="badge rounded-pill bg-primary-subtle text-primary px-3">
+                                            <i class="bi bi-plus-square me-1"></i>Nuevo
+                                        </span>
+                                    }
                                     else
                                     {
                                         <span class="badge rounded-pill bg-warning-subtle text-warning px-3">
@@ -109,6 +116,11 @@
                                         {
                                             signo = "-";
                                             colorCantidad = "text-danger";
+                                        }
+                                        else if (m.TipoMovimiento == "Nuevo")
+                                        {
+                                            signo = "+";
+                                            colorCantidad = "text-primary";
                                         }
                                         else
                                         {
