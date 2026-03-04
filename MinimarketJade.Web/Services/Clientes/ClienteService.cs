@@ -25,10 +25,25 @@ namespace MinimarketJade.Web.Services.Clientes
             return await _context.Clientes.FindAsync(id);
         }
 
-        public async Task CrearAsync(Cliente cliente)
+        public async Task<bool> CrearAsync(Cliente cliente)
         {
-            _context.Clientes.Add(cliente);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Clientes.Add(cliente);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                // Error por restricción UNIQUE
+                if (ex.InnerException != null &&
+                    ex.InnerException.Message.Contains("UQ_Cliente_documento"))
+                {
+                    return false;
+                }
+
+                throw; // si es otro error, lo lanza normal
+            }
         }
 
         public async Task ActualizarAsync(Cliente cliente)

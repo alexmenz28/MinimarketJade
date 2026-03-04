@@ -12,6 +12,11 @@
     Nuevo Cliente
 </button>
 
+<input class="form-control mb-3"
+       placeholder="Buscar por ID, nombre o documento..."
+       @bind="textoBusqueda"
+       @bind:event="oninput" />
+
 @if (mostrarFormulario)
 {
     <div class="modal fade show d-block" style="background-color:rgba(0,0,0,0.5)">
@@ -26,6 +31,12 @@
                 </div>
 
                 <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger">
+                            @mensajeError
+                        </div>
+                    }
                     <EditForm Model="clienteActual" OnValidSubmit="Guardar">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
@@ -80,6 +91,7 @@ else
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>ID</th>
                 <th>Documento</th>
                 <th>Nombre</th>
                 <th>Teléfono</th>
@@ -89,11 +101,12 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var c in clientes)
+            @foreach (var c in clientesFiltrados)
             {
                 var estaDeshabilitado = clientesDeshabilitados.Contains(c.IdCliente);
 
                 <tr class="@(estaDeshabilitado ? "table-secondary" : "")">
+                    <td>@c.IdCliente</td>
                     <td>@c.DocumentoIdentidad</td>
                     <td>@c.NombreCompleto</td>
                     <td>@c.Telefono</td>
@@ -124,6 +137,18 @@ else
     private List<Cliente>? clientes;
     private Cliente clienteActual = new();
     private bool mostrarFormulario = false;
+    private string? mensajeError;
+    private string textoBusqueda = "";
+
+    private IEnumerable<Cliente> clientesFiltrados =>
+        clientes == null
+            ? new List<Cliente>()
+            : clientes.Where(c =>
+                string.IsNullOrWhiteSpace(textoBusqueda) ||
+                c.IdCliente.ToString().Contains(textoBusqueda) ||
+                c.NombreCompleto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+                c.DocumentoIdentidad.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+            );
 
     // Lista local SOLO visual
     private List<int> clientesDeshabilitados = new();
@@ -161,10 +186,22 @@ else
 
     private async Task Guardar()
     {
+        mensajeError = null;
+
         if (clienteActual.IdCliente == 0)
-            await ClienteService.CrearAsync(clienteActual);
+        {
+            var creado = await ClienteService.CrearAsync(clienteActual);
+
+            if (!creado)
+            {
+                mensajeError = "Este cliente ya existe con exactamente los mismos datos o Documento.";
+                return;
+            }
+        }
         else
+        {
             await ClienteService.ActualizarAsync(clienteActual);
+        }
 
         mostrarFormulario = false;
         await CargarClientes();
