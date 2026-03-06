@@ -3,6 +3,7 @@
 @using MinimarketJade.Web.Services.Compras
 @using MinimarketJade.Web.Services.Proveedores
 @using MinimarketJade.Web.Services
+@using System.Linq
 @inject ICompraService CompraService
 @inject IProveedorService ProveedorService
 @inject IProductoService ProductoService
@@ -75,7 +76,7 @@
                             <label class="form-label fw-bold">Proveedor</label>
                             <InputSelect class="form-select" @bind-Value="compraActual.IdProveedor">
                                 <option value="0">-- Seleccionar proveedor --</option>
-                                @foreach (var prov in proveedores)
+                                @foreach (var prov in (proveedores ?? Enumerable.Empty<Proveedor>()).Where(p => p.Activo))
                                 {
                                     <option value="@prov.IdProveedor">@prov.RazonSocial</option>
                                 }
