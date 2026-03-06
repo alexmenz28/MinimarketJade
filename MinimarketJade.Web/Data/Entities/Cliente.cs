@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MinimarketJade.Web.Data.Entities;
 
@@ -25,6 +26,9 @@ public partial class Cliente
 
     [StringLength(300)]
     public string? Direccion { get; set; }
+
+    [Column("activo")]
+    public bool Activo { get; set; } = true;
 
     public virtual ICollection<Ventum> Venta { get; set; } = new List<Ventum>();
 }

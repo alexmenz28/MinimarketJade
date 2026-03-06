@@ -200,7 +200,13 @@ else
         }
         else
         {
-            await ClienteService.ActualizarAsync(clienteActual);
+            var actualizado = await ClienteService.ActualizarAsync(clienteActual);
+
+            if (!actualizado)
+            {
+                mensajeError = "Ya existe un cliente con ese documento.";
+                return;
+            }
         }
 
         mostrarFormulario = false;
