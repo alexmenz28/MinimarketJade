@@ -22,6 +22,74 @@
         </div>
     </div>
 
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-outline-success" @onclick="ToggleFrecuentes">Proveedores Frecuentes</button>
+        <button class="btn btn-outline-warning" @onclick="ToggleOcasionales">Proveedores Ocasionales</button>
+    </div>
+
+    @if (selectedView == "Frecuentes")
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-success text-white">Proveedores Frecuentes</div>
+            <div class="card-body p-2">
+                @if (proveedoresFrecuentes == null)
+                {
+                    <div class="small text-muted">Cargando...</div>
+                }
+                else if (!proveedoresFrecuentes.Any())
+                {
+                    <div class="small text-muted">No hay proveedores frecuentes.</div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var pf in proveedoresFrecuentes)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">@pf.RazonSocial</div>
+                                    <div class="small text-muted">@pf.NitRuc - @(string.IsNullOrEmpty(pf.Contacto) ? "-" : pf.Contacto)</div>
+                                </div>
+                                <div class="small text-muted">@pf.Telefono</div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+    else if (selectedView == "Ocasionales")
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-warning text-dark">Proveedores Ocasionales</div>
+            <div class="card-body p-2">
+                @if (proveedoresOcasionales == null)
+                {
+                    <div class="small text-muted">Cargando...</div>
+                }
+                else if (!proveedoresOcasionales.Any())
+                {
+                    <div class="small text-muted">No hay proveedores ocasionales.</div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var po in proveedoresOcasionales)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">@po.RazonSocial</div>
+                                    <div class="small text-muted">@po.NitRuc - @(string.IsNullOrEmpty(po.Contacto) ? "-" : po.Contacto)</div>
+                                </div>
+                                <div class="small text-muted">@po.Telefono</div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+
     @if (proveedores == null)
     {
         <div class="alert alert-info">Cargando proveedores...</div>
@@ -143,11 +211,14 @@
 
 @code {
     private List<Proveedor>? proveedores;
+    private List<Proveedor>? proveedoresFrecuentes;
+    private List<Proveedor>? proveedoresOcasionales;
     private Proveedor proveedorActual = new();
     private bool mostrarModal = false;
     private bool esEdicion = false;
     private string? mensajeError;
     private string textoBusqueda = string.Empty;
+    private string selectedView = string.Empty; // "Frecuentes" | "Ocasionales" | "" (todos)
 
     private IEnumerable<Proveedor> proveedoresFiltrados =>
         (proveedores ?? Enumerable.Empty<Proveedor>())
@@ -165,6 +236,20 @@
     private async Task CargarDatos()
     {
         proveedores = await ProveedorService.ObtenerTodosAsync();
+        // Cargar clasificación por frecuencia (ultimos 6 meses, umbral 3)
+        var clas = await ProveedorService.ObtenerClasificacionFrecuenciaAsync();
+        proveedoresFrecuentes = clas.Frecuentes;
+        proveedoresOcasionales = clas.Ocasionales;
+    }
+
+    private void ToggleFrecuentes()
+    {
+        selectedView = selectedView == "Frecuentes" ? string.Empty : "Frecuentes";
+    }
+
+    private void ToggleOcasionales()
+    {
+        selectedView = selectedView == "Ocasionales" ? string.Empty : "Ocasionales";
     }
 
     private void AbrirModal()

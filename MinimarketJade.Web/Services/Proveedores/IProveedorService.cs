@@ -12,5 +12,7 @@ namespace MinimarketJade.Web.Services.Proveedores
         Task<bool> ExisteNitAsync(string nitRuc, int? excluirId = null);
         Task InhabilitarAsync(int id);
         Task HabilitarAsync(int id);
+        // Obtener proveedores clasificados por frecuencia de compras
+        Task<(List<Proveedor> Frecuentes, List<Proveedor> Ocasionales)> ObtenerClasificacionFrecuenciaAsync(int meses = 6, int umbral = 3);
     }
 }
