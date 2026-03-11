@@ -97,29 +97,32 @@
                                 <button class="btn btn-outline-secondary" type="button" @onclick="LimpiarBusqueda">Limpiar</button>
                             </div>
 
-                            <div style="max-height: 220px; overflow:auto;">
-                                <table class="table table-sm">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th>Stock</th>
-                                            <th>Precio Compra</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var prod in productosFiltrados)
-                                        {
+                            @if (!string.IsNullOrWhiteSpace(textoBusquedaProducto))
+                            {
+                                <div style="max-height: 220px; overflow:auto;">
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
                                             <tr>
-                                                <td>@prod.Nombre</td>
-                                                <td>@prod.StockActual</td>
-                                                <td>@prod.PrecioCompra.ToString("N2")</td>
-                                                <td><button class="btn btn-sm btn-primary" @onclick="() => AgregarLinea(prod)">Agregar</button></td>
+                                                <th>Producto</th>
+                                                <th>Stock</th>
+                                                <th>Precio Compra</th>
+                                                <th></th>
                                             </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var prod in productosFiltrados)
+                                            {
+                                                <tr>
+                                                    <td>@prod.Nombre</td>
+                                                    <td>@prod.StockActual</td>
+                                                    <td>@prod.PrecioCompra.ToString("N2")</td>
+                                                    <td><button class="btn btn-sm btn-primary" @onclick="() => AgregarLinea(prod)">Agregar</button></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
                         </div>
                     </div>
 
@@ -232,9 +235,10 @@
     private decimal Total => Subtotal; // sin impuestos
 
     private IEnumerable<Producto> productosFiltrados =>
-        productos.Where(p => string.IsNullOrWhiteSpace(textoBusquedaProducto)
-            ? true
-            : (p.Nombre != null && p.Nombre.Contains(textoBusquedaProducto, StringComparison.OrdinalIgnoreCase))
+        // Solo filtrar y mostrar productos cuando el usuario haya escrito algo en el buscador
+        string.IsNullOrWhiteSpace(textoBusquedaProducto)
+            ? Enumerable.Empty<Producto>()
+            : productos.Where(p => (p.Nombre != null && p.Nombre.Contains(textoBusquedaProducto, StringComparison.OrdinalIgnoreCase))
               || (p.CodigoBarras != null && p.CodigoBarras.Contains(textoBusquedaProducto, StringComparison.OrdinalIgnoreCase)));
 
     protected override async Task OnInitializedAsync()
