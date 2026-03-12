@@ -127,5 +127,32 @@ namespace MinimarketJade.Web.Services.Proveedores
 
             return await _context.Proveedors.AnyAsync(p => p.NitRuc == nitRuc); 
         }
+
+        public async Task<(List<Proveedor> Frecuentes, List<Proveedor> Ocasionales)> ObtenerClasificacionFrecuenciaAsync(int meses = 6, int umbral = 3)
+        {
+            // Fecha desde la cual contar compras
+            var desde = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-meses));
+
+            // Agrupar compras por proveedor en el periodo
+            var grupos = await _context.Compras
+                .Where(c => c.Fecha >= desde)
+                .GroupBy(c => c.IdProveedor)
+                .Select(g => new { IdProveedor = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var frecuentesIds = grupos.Where(g => g.Count >= umbral).Select(g => g.IdProveedor).ToList();
+
+            var frecuentes = await _context.Proveedors
+                .Where(p => frecuentesIds.Contains(p.IdProveedor) && p.Activo)
+                .OrderBy(p => p.RazonSocial)
+                .ToListAsync();
+
+            var ocasionales = await _context.Proveedors
+                .Where(p => !frecuentesIds.Contains(p.IdProveedor) && p.Activo)
+                .OrderBy(p => p.RazonSocial)
+                .ToListAsync();
+
+            return (frecuentes, ocasionales);
+        }
     }
 }

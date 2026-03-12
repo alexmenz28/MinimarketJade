@@ -30,7 +30,7 @@ public partial class Proveedor
     [MaxLength(100)]
     public string? Contacto { get; set; }
 
-    [NotMapped]
+    [Column("activo")]
     public bool Activo { get; set; } = true;
 
     public virtual ICollection<Compra> Compras { get; set; } = new List<Compra>();
