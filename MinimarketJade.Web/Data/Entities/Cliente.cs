@@ -18,6 +18,7 @@ public partial class Cliente
     public string NombreCompleto { get; set; } = null!;
 
     [StringLength(20)]
+    [RegularExpression(@"^[0-9]*$", ErrorMessage = "El teléfono solo puede contener números.")]
     public string? Telefono { get; set; }
 
     [EmailAddress]
@@ -27,7 +28,6 @@ public partial class Cliente
     [StringLength(300)]
     public string? Direccion { get; set; }
 
-    [Column("activo")]
     public bool Activo { get; set; } = true;
 
     public virtual ICollection<Ventum> Venta { get; set; } = new List<Ventum>();

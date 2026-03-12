@@ -11,4 +11,6 @@ public interface IVentaService
     Task<int> AddAsync(Ventum venta);
 
     Task AnularAsync(int id);
+
+    Task<List<Ventum>> GetByClienteAsync(int idCliente);
 }

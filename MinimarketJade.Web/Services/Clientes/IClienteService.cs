@@ -9,5 +9,6 @@ namespace MinimarketJade.Web.Services.Clientes
         Task<bool> CrearAsync(Cliente cliente);
         Task<bool> ActualizarAsync(Cliente cliente);
         Task EliminarAsync(int id);
+        Task CambiarEstadoAsync(int id);
     }
 }

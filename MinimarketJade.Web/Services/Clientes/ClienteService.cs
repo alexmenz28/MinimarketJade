@@ -16,7 +16,8 @@ namespace MinimarketJade.Web.Services.Clientes
         public async Task<List<Cliente>> ObtenerTodosAsync()
         {
             return await _context.Clientes
-                .OrderBy(c => c.NombreCompleto)
+                .Include(c => c.Venta)
+                .OrderBy(c => c.IdCliente)
                 .ToListAsync();
         }
 
@@ -84,6 +85,17 @@ namespace MinimarketJade.Web.Services.Clientes
             if (cliente != null)
             {
                 _context.Clientes.Remove(cliente);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task CambiarEstadoAsync(int id)
+        {
+            var cliente = await _context.Clientes.FindAsync(id);
+
+            if (cliente != null)
+            {
+                cliente.Activo = !cliente.Activo;
                 await _context.SaveChangesAsync();
             }
         }
