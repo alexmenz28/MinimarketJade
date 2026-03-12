@@ -1,0 +1,24 @@
+@page "/logout"
+@rendermode InteractiveServer
+@layout LoginLayout
+@inject AuthService Auth
+@inject IJSRuntime JS
+
+<PageTitle>Cerrar sesión - Minimarket Jade</PageTitle>
+
+<div class="text-center p-5">
+    <p class="text-muted">Cerrando sesión...</p>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Auth.SignOut();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("eval", "window.location.href = window.location.origin + '/login'");
+    }
+}

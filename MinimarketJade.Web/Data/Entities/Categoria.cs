@@ -4,24 +4,29 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace MinimarketJade.Web.Data.Entities;
 
 /// <summary>
-/// Categoría de productos (catálogo).
+/// Representa una categoría de productos en el catálogo.
+/// La estructura es jerárquica (árbol): una categoría puede tener una categoría padre
+/// y varias subcategorías. Si IdCategoriaPadre es null, la categoría es raíz (nivel superior).
 /// </summary>
 [Table("Categoria")] 
 public class Categoria
 {
-    
-    [Key]
-    [Column("id_categoria")]
+    /// <summary>Identificador único de la categoría (PK en la tabla Categoria).</summary>
     public int IdCategoria { get; set; }
-    [Column("nombre")]
+
+    /// <summary>Nombre de la categoría (ej: "Abarrotes", "Lácteos").</summary>
     public string Nombre { get; set; } = string.Empty;
-    [Column("id_categoria_padre")]
+
+    /// <summary>
+    /// Id de la categoría padre. Si es null, esta categoría es raíz (no tiene padre).
+    /// Si tiene valor, esta categoría es hija de otra (ej: "Leche" es hija de "Lácteos").
+    /// </summary>
     public int? IdCategoriaPadre { get; set; }
 
-    // Navegación 
+    // Navegación para Entity Framework (relación recursiva)
+    /// <summary>Categoría padre (solo tiene valor si IdCategoriaPadre no es null).</summary>
+    public Categoria? CategoriaPadre { get; set; }
 
-    [ForeignKey("IdCategoriaPadre")]
-    public virtual Categoria? CategoriaPadre { get; set; }
-    public virtual ICollection<Categoria> Subcategorias { get; set; } = new List<Categoria>();
-    public virtual ICollection<Producto> Productos { get; set; } = new List<Producto>();
+    /// <summary>Lista de subcategorías hijas de esta categoría.</summary>
+    public ICollection<Categoria> Subcategorias { get; set; } = new List<Categoria>();
 }

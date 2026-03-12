@@ -1,0 +1,398 @@
+@page "/usuarios"
+@rendermode InteractiveServer
+@layout MainLayout
+@using Microsoft.EntityFrameworkCore
+@using MinimarketJade.Web.Data
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Auth
+@inject AppDbContext Db
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Usuarios - Minimarket Jade</PageTitle>
+
+@if (!Auth.IsAdministrador)
+{
+    <div class="alert alert-danger mt-4">
+        Solo un usuario con rol <strong>Administrador</strong> puede gestionar usuarios.
+    </div>
+}
+else
+{
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Gestión de usuarios</h3>
+            <button class="btn btn-primary" @onclick="AbrirModalCrear">Nuevo usuario vendedor</button>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">🔍</span>
+                    <input class="form-control"
+                           placeholder="Buscar por usuario..."
+                           @bind="textoBusqueda"
+                           @bind:event="oninput" />
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <div class="alert alert-danger">@mensajeError</div>
+        }
+        @if (!string.IsNullOrEmpty(mensajeOk))
+        {
+            <div class="alert alert-success">@mensajeOk</div>
+        }
+
+        <table class="table table-hover table-bordered">
+            <thead class="table-dark">
+            <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th class="text-center">Activo</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var u in UsuariosPaginaActual)
+            {
+                <tr class="@(u.Activo ? "" : "table-secondary text-muted")">
+                    <td>@u.NombreUsuario</td>
+                    <td>@u.Rol</td>
+                    <td class="text-center">
+                        @(u.Activo ? "Sí" : "No")
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-warning me-1" @onclick="() => AbrirModalEditar(u)">Editar</button>
+                        @if (u.Activo)
+                        {
+                            <button class="btn btn-sm btn-danger" @onclick="() => AbrirModalDesactivar(u)">Desactivar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => CambiarEstado(u, true)">Reactivar</button>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        @if (TotalPaginas > 1)
+        {
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(PaginaActual == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="()=>CambiarPagina(PaginaActual-1)">Anterior</button>
+                    </li>
+                    @for (int i = 1; i <= TotalPaginas; i++)
+                    {
+                        <li class="page-item @(i == PaginaActual ? "active" : "")">
+                            <button class="page-link" @onclick="()=>CambiarPagina(i)">@i</button>
+                        </li>
+                    }
+                    <li class="page-item @(PaginaActual == TotalPaginas ? "disabled" : "")">
+                        <button class="page-link" @onclick="()=>CambiarPagina(PaginaActual+1)">Siguiente</button>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+}
+
+@* Modal Crear *@
+@if (mostrarModalCrear)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo usuario vendedor</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input class="form-control" @bind="formUsuario.NombreUsuario" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <input class="form-control" type="password" @bind="formUsuario.Password" />
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label">Rol</label>
+                        <input class="form-control" value="Vendedor" disabled />
+                        <small class="text-muted">Los nuevos usuarios se crean siempre como Vendedor.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="CrearUsuario">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Editar *@
+@if (mostrarModalEditar && usuarioSeleccionado is not null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar usuario</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input class="form-control" @bind="formUsuario.NombreUsuario" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nueva contraseña (opcional)</label>
+                        <input class="form-control" type="password" @bind="formUsuario.Password" />
+                        <small class="text-muted">Déjelo vacío si no desea cambiar la contraseña.</small>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label">Rol</label>
+                        <input class="form-control" value="@usuarioSeleccionado.Rol" disabled />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="GuardarCambiosUsuario">Guardar cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Desactivar *@
+@if (mostrarModalDesactivar && usuarioSeleccionado is not null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Desactivar usuario</h5>
+                </div>
+                <div class="modal-body">
+                    ¿Seguro que desea desactivar al usuario <strong>@usuarioSeleccionado.NombreUsuario</strong>?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-danger" @onclick="DesactivarUsuarioConfirmado">Desactivar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Usuario> usuarios = new();
+    private string textoBusqueda = string.Empty;
+    private string? mensajeError;
+    private string? mensajeOk;
+
+    private const int TamPagina = 10;
+    private int PaginaActual = 1;
+
+    private bool mostrarModalCrear;
+    private bool mostrarModalEditar;
+    private bool mostrarModalDesactivar;
+    private Usuario? usuarioSeleccionado;
+
+    private FormUsuario formUsuario = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAdministrador)
+        {
+            // Seguridad adicional: si no es admin, lo mandamos al inicio.
+            Nav.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        await CargarUsuarios();
+    }
+
+    private async Task CargarUsuarios()
+    {
+        usuarios = await Db.Usuarios
+            .AsNoTracking()
+            .Where(u => u.Rol == "Vendedor")
+            .OrderBy(u => u.NombreUsuario)
+            .ToListAsync();
+        AjustarPagina();
+    }
+
+    private IEnumerable<Usuario> UsuariosFiltrados =>
+        usuarios
+            .Where(u =>
+                string.IsNullOrWhiteSpace(textoBusqueda)
+                || u.NombreUsuario.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    private int TotalPaginas =>
+        Math.Max(1, (int)Math.Ceiling(UsuariosFiltrados.Count() / (double)TamPagina));
+
+    private IEnumerable<Usuario> UsuariosPaginaActual =>
+        UsuariosFiltrados
+            .Skip((PaginaActual - 1) * TamPagina)
+            .Take(TamPagina);
+
+    private void CambiarPagina(int nueva)
+    {
+        PaginaActual = Math.Clamp(nueva, 1, TotalPaginas);
+    }
+
+    private void AjustarPagina()
+    {
+        PaginaActual = Math.Clamp(PaginaActual, 1, TotalPaginas);
+    }
+
+    private void AbrirModalCrear()
+    {
+        mensajeError = mensajeOk = null;
+        formUsuario = new FormUsuario();
+        mostrarModalCrear = true;
+    }
+
+    private void AbrirModalEditar(Usuario u)
+    {
+        mensajeError = mensajeOk = null;
+        usuarioSeleccionado = u;
+        formUsuario = new FormUsuario
+        {
+            NombreUsuario = u.NombreUsuario,
+            Password = string.Empty
+        };
+        mostrarModalEditar = true;
+    }
+
+    private void AbrirModalDesactivar(Usuario u)
+    {
+        mensajeError = mensajeOk = null;
+        usuarioSeleccionado = u;
+        mostrarModalDesactivar = true;
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModalCrear = mostrarModalEditar = mostrarModalDesactivar = false;
+        usuarioSeleccionado = null;
+    }
+
+    private async Task CrearUsuario()
+    {
+        mensajeError = mensajeOk = null;
+
+        if (string.IsNullOrWhiteSpace(formUsuario.NombreUsuario) || string.IsNullOrWhiteSpace(formUsuario.Password))
+        {
+            mensajeError = "Usuario y contraseña son obligatorios.";
+            return;
+        }
+
+        var existe = await Db.Usuarios.AnyAsync(u => u.NombreUsuario == formUsuario.NombreUsuario);
+        if (existe)
+        {
+            mensajeError = $"Ya existe un usuario con nombre '{formUsuario.NombreUsuario}'.";
+            return;
+        }
+
+        var nuevo = new Usuario
+        {
+            NombreUsuario = formUsuario.NombreUsuario.Trim(),
+            ContraseñaHash = PasswordHelper.Hash(formUsuario.Password),
+            Rol = "Vendedor",
+            Activo = true
+        };
+
+        Db.Usuarios.Add(nuevo);
+        await Db.SaveChangesAsync();
+
+        mensajeOk = "Usuario creado correctamente.";
+        CerrarModales();
+        await CargarUsuarios();
+    }
+
+    private async Task GuardarCambiosUsuario()
+    {
+        if (usuarioSeleccionado is null)
+            return;
+
+        mensajeError = mensajeOk = null;
+
+        if (string.IsNullOrWhiteSpace(formUsuario.NombreUsuario))
+        {
+            mensajeError = "El nombre de usuario es obligatorio.";
+            return;
+        }
+
+        var existeOtro = await Db.Usuarios.AnyAsync(u =>
+            u.NombreUsuario == formUsuario.NombreUsuario &&
+            u.IdUsuario != usuarioSeleccionado.IdUsuario);
+        if (existeOtro)
+        {
+            mensajeError = $"Ya existe otro usuario con nombre '{formUsuario.NombreUsuario}'.";
+            return;
+        }
+
+        var uDb = await Db.Usuarios.FirstOrDefaultAsync(u => u.IdUsuario == usuarioSeleccionado.IdUsuario);
+        if (uDb is null)
+        {
+            mensajeError = "El usuario ya no existe.";
+            await CargarUsuarios();
+            return;
+        }
+
+        uDb.NombreUsuario = formUsuario.NombreUsuario.Trim();
+
+        if (!string.IsNullOrWhiteSpace(formUsuario.Password))
+        {
+            uDb.ContraseñaHash = PasswordHelper.Hash(formUsuario.Password);
+        }
+        await Db.SaveChangesAsync();
+
+        mensajeOk = "Usuario actualizado.";
+        CerrarModales();
+        await CargarUsuarios();
+    }
+
+    private async Task DesactivarUsuarioConfirmado()
+    {
+        if (usuarioSeleccionado is null)
+            return;
+
+        await CambiarEstado(usuarioSeleccionado, false);
+        CerrarModales();
+    }
+
+    private async Task CambiarEstado(Usuario u, bool activo)
+    {
+        mensajeError = mensajeOk = null;
+
+        var uDb = await Db.Usuarios.FirstOrDefaultAsync(x => x.IdUsuario == u.IdUsuario);
+        if (uDb is null)
+        {
+            mensajeError = "El usuario ya no existe.";
+            await CargarUsuarios();
+            return;
+        }
+
+        uDb.Activo = activo;
+        await Db.SaveChangesAsync();
+
+        mensajeOk = activo ? "Usuario reactivado." : "Usuario desactivado.";
+        await CargarUsuarios();
+    }
+
+    private class FormUsuario
+    {
+        public string NombreUsuario { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
+

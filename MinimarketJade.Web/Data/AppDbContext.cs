@@ -1,10 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Data.Entities;
 
 namespace MinimarketJade.Web.Data;
 
+/// <summary>
+/// Contexto de base de datos para Minimarket Jade (SQL Server).
+/// Conexión configurada en appsettings; aquí se registran las entidades.
+/// </summary>
 public partial class AppDbContext : DbContext
 {
     public AppDbContext()
@@ -15,7 +19,6 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
-    public virtual DbSet<Categoria> Categoria { get; set; }
 
     public virtual DbSet<ArqueoCaja> ArqueoCajas { get; set; }
 
@@ -35,13 +38,33 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Proveedor> Proveedors { get; set; }
 
+    /// <summary>Tabla Categoria: categorías de productos con jerarquía (padre/hijos).</summary>
+    public virtual DbSet<Categoria> Categorias { get; set; }
+
+    /// <summary>Tabla Usuario: usuarios del sistema para login.</summary>
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     public virtual DbSet<Ventum> Venta { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.UseCollation("Latin1_General_CI_AI");
+
+        // Mapeo de Categoria: jerarquía padre/hijos (id_categoria, nombre, id_categoria_padre).
+        modelBuilder.Entity<Categoria>(e =>
+        {
+            e.ToTable("Categoria");
+            e.HasKey(x => x.IdCategoria);
+            e.Property(x => x.IdCategoria).HasColumnName("id_categoria");
+            e.Property(x => x.Nombre).HasMaxLength(100).HasColumnName("nombre");
+            e.Property(x => x.IdCategoriaPadre).HasColumnName("id_categoria_padre");
+            e.HasOne(x => x.CategoriaPadre)
+                .WithMany(x => x.Subcategorias)
+                .HasForeignKey(x => x.IdCategoriaPadre)
+                .IsRequired(false);
+        });
 
         modelBuilder.Entity<ArqueoCaja>(entity =>
         {
@@ -294,18 +317,17 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("email");
             entity.Property(e => e.NitRuc)
+                .IsRequired()
                 .HasMaxLength(30)
                 .HasColumnName("nit_ruc");
-            // Mapeamos la propiedad Nombre de la entidad a la columna razon_social existente
-            entity.Property(e => e.Nombre)
+            // Mapeamos la propiedad RazonSocial de la entidad a la columna razon_social existente
+            entity.Property(e => e.RazonSocial)
+                .IsRequired()
                 .HasMaxLength(200)
                 .HasColumnName("razon_social");
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");
-            entity.Property(e => e.TipoProducto)
-                .HasMaxLength(100)
-                .HasColumnName("tipo_producto");
         });
 
         modelBuilder.Entity<Usuario>(entity =>

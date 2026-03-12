@@ -1,6 +1,234 @@
 @page "/inventario"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services
 @rendermode InteractiveServer
+
+
 <PageTitle>Inventario - Minimarket Jade</PageTitle>
 
-<h2>Inventario</h2>
-<p>Stock, movimientos y reabastecimiento.</p>
+<div class="container-fluid mt-3 px-4">
+
+    @* Encabezado *@
+    <div class="prod-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold m-0 d-flex align-items-center">
+                <i class="bi bi-clipboard2-data me-3"></i>Movimientos de Inventario
+            </h2>
+            <p class="m-0 opacity-75 small">Historial de entradas, salidas y ajustes de stock</p>
+        </div>
+        <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirAjuste">
+            <i class="bi bi-sliders me-2 text-warning"></i>Ajuste Manual
+        </button>
+    </div>
+
+    @* Filtros *@
+    <div class="d-flex flex-wrap gap-2 my-3 align-items-center bg-white p-3 rounded-4 shadow-sm border">
+        <span class="small fw-bold text-muted me-2"><i class="bi bi-filter-left me-1"></i>FILTRAR POR:</span>
+
+        <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="width:250px;">
+            <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-0"
+                   placeholder="Buscar producto..."
+                   @bind="busqueda" @bind:event="oninput" />
+        </div>
+
+        <select class="form-select form-select-sm rounded-pill border shadow-sm" style="width:180px;"
+                @bind="filtroTipo">
+            <option value="">Todos los tipos</option>
+            <option value="Entrada">Entrada</option>
+            <option value="Salida">Salida</option>
+            <option value="Ajuste">Ajuste</option>
+        </select>
+
+        <input type="date" class="form-control form-control-sm border rounded-pill px-3" style="width:160px;"
+               @bind="fechaDesde" @bind:event="oninput" />
+        <span class="text-muted small">—</span>
+        <input type="date" class="form-control form-control-sm border rounded-pill px-3" style="width:160px;"
+               @bind="fechaHasta" @bind:event="oninput" />
+
+        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 ms-auto" @onclick="LimpiarFiltros">
+            <i class="bi bi-x-circle me-1"></i>Limpiar
+        </button>
+    </div>
+
+    @* Tabla *@
+    <div class="card prod-card p-4">
+        @if (!MovimientosFiltrados.Any())
+        {
+            <div class="alert alert-warning shadow-sm">No se encontraron movimientos con los filtros aplicados.</div>
+        }
+        else
+        {
+            <div class="table-responsive" style="max-height:65vh;">
+                <table class="table table-modern align-middle">
+                    <thead>
+                        <tr>
+                            <th>FECHA Y HORA</th>
+                            <th>PRODUCTO</th>
+                            <th class="text-center">TIPO</th>
+                            <th class="text-center">CANTIDAD</th>
+                            <th>USUARIO</th>
+                            <th>MOTIVO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in MovimientosFiltrados)
+                        {
+                            <tr>
+                                <td class="fw-bold text-dark small">@m.FechaHora.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="fw-bold">@m.IdProductoNavigation.Nombre</td>
+                                <td class="text-center">
+                                    @if (m.TipoMovimiento == "Entrada")
+                                    {
+                                        <span class="badge rounded-pill bg-success-subtle text-success px-3">
+                                            <i class="bi bi-arrow-down-circle me-1"></i>Entrada
+                                        </span>
+                                    }
+                                    else if (m.TipoMovimiento == "Salida")
+                                    {
+                                        <span class="badge rounded-pill bg-danger-subtle text-danger px-3">
+                                            <i class="bi bi-arrow-up-circle me-1"></i>Salida
+                                        </span>
+                                    }
+                                    else if (m.TipoMovimiento == "Nuevo")
+                                    {
+                                        <span class="badge rounded-pill bg-primary-subtle text-primary px-3">
+                                            <i class="bi bi-plus-square me-1"></i>Nuevo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill bg-warning-subtle text-warning px-3">
+                                            <i class="bi bi-arrow-left-right me-1"></i>Ajuste
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @{
+                                        string signo;
+                                        string colorCantidad;
+                                        if (m.TipoMovimiento == "Entrada")
+                                        {
+                                            signo = "+";
+                                            colorCantidad = "text-success";
+                                        }
+                                        else if (m.TipoMovimiento == "Salida")
+                                        {
+                                            signo = "-";
+                                            colorCantidad = "text-danger";
+                                        }
+                                        else if (m.TipoMovimiento == "Nuevo")
+                                        {
+                                            signo = "+";
+                                            colorCantidad = "text-primary";
+                                        }
+                                        else
+                                        {
+                                            bool esPositivo = m.Motivo?.Contains("Ajuste +") ?? false;
+                                            signo = esPositivo ? "+" : "-";
+                                            colorCantidad = esPositivo ? "text-success" : "text-danger";
+                                        }
+                                    }
+                                    <span class="fw-bold @colorCantidad">@signo@m.Cantidad</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark fw-normal border">
+                                        @m.IdUsuarioNavigation.NombreUsuario
+                                    </span>
+                                </td>
+                                <td class="text-muted small">@(string.IsNullOrEmpty(m.Motivo) ? "—" : m.Motivo)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* Modal Ajuste *@
+@if (mostrarAjuste)
+{
+    <div class="modal fade show d-block modal-blur" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-sliders me-2"></i>Ajuste Manual de Stock</h5>
+                    <button type="button" class="btn-close" @onclick="() => mostrarAjuste = false"></button>
+                </div>
+                <div class="modal-body p-4">
+
+                    @if (!string.IsNullOrEmpty(errorAjuste))
+                    {
+                        <div class="alert alert-danger py-2 small">@errorAjuste</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Producto</label>
+                        <select class="form-select shadow-sm" @bind="idProductoAjuste">
+                            <option value="0">Selecciona un producto...</option>
+                            @foreach (var p in productos.Where(p => p.Activo))
+                            {
+                                <option value="@p.IdProducto">@p.Nombre (Stock actual: @p.StockActual)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Operación</label>
+                        <div class="d-flex gap-2">
+                            <button type="button"
+                                    class="btn w-50 rounded-pill fw-bold @(operacion == "sumar" ? "btn-success" : "btn-outline-success")"
+                                    @onclick='() => operacion = "sumar"'>
+                                <i class="bi bi-plus-circle me-1"></i>Sumar
+                            </button>
+                            <button type="button"
+                                    class="btn w-50 rounded-pill fw-bold @(operacion == "restar" ? "btn-danger" : "btn-outline-danger")"
+                                    @onclick='() => operacion = "restar"'>
+                                <i class="bi bi-dash-circle me-1"></i>Restar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Cantidad</label>
+                        <input type="number" class="form-control shadow-sm" min="1"
+                               @bind="cantidadAjuste" @bind:event="oninput" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Motivo</label>
+                        <textarea class="form-control shadow-sm" rows="2"
+                                  placeholder="Ej: Corrección de conteo físico, producto dañado..."
+                                  @bind="motivoAjuste" @bind:event="oninput"></textarea>
+                    </div>
+
+                    @* Preview del resultado *@
+                    @if (idProductoAjuste > 0 && cantidadAjuste > 0)
+                    {
+                        var prod = productos.FirstOrDefault(p => p.IdProducto == idProductoAjuste);
+                        if (prod != null)
+                        {
+                            int resultado = operacion == "sumar" ? prod.StockActual + cantidadAjuste : prod.StockActual - cantidadAjuste;
+                            <div class="bg-light rounded-4 p-3 text-center border">
+                                <span class="text-muted small">Stock actual: <strong>@prod.StockActual</strong></span>
+                                <span class="mx-2 fw-bold @(operacion == "sumar" ? "text-success" : "text-danger")">
+                                    @(operacion == "sumar" ? $"+{cantidadAjuste}" : $"-{cantidadAjuste}")
+                                </span>
+                                <span class="text-muted small">→ Nuevo stock: <strong class="@(resultado < 0 ? "text-danger" : "text-primary")">@resultado</strong></span>
+                            </div>
+                        }
+                    }
+
+                </div>
+                <div class="modal-footer border-0 p-4 d-flex gap-2">
+                    <button class="btn btn-secondary w-50 rounded-pill fw-bold" @onclick="() => mostrarAjuste = false">Cancelar</button>
+                    <button class="btn btn-warning w-50 rounded-pill fw-bold text-dark shadow-sm" @onclick="GuardarAjuste"
+                            disabled="@(string.IsNullOrWhiteSpace(motivoAjuste) || idProductoAjuste == 0 || cantidadAjuste <= 0)">
+                        <i class="bi bi-check2 me-1"></i>Aplicar Ajuste
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

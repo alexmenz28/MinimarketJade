@@ -1,0 +1,159 @@
+﻿::deep .venta-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-bottom: 4px solid #4361ee;
+}
+
+::deep .pos-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+}
+
+::deep .table-modern {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+
+    ::deep .table-modern thead th {
+        border: none;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 0.75rem;
+        color: #64748b;
+    }
+
+    ::deep .table-modern tbody tr {
+        background-color: white;
+        transition: all 0.2s ease;
+    }
+
+        ::deep .table-modern tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+        }
+
+    ::deep .table-modern td {
+        padding: 0.75rem;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+::deep .total-box {
+    background-color: #f1f5f9;
+    color: #4361ee;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    text-align: right;
+    border: 2px solid #4361ee;
+}
+
+::deep .btn-qty {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    background-color: #f1f5f9 !important;
+    border: 1px solid #dee2e6 !important;
+    color: #212529 !important;
+    font-size: 1.1rem !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
+    ::deep .btn-qty:hover {
+        background-color: #4361ee !important;
+        color: white !important;
+        border-color: #4361ee !important;
+    }
+
+::deep .modal-pos-size {
+    max-width: 96vw;
+    width: 1150px;
+    margin: 1vh auto;
+}
+
+::deep .modal-pos-content {
+    height: 94vh;
+    max-height: 94vh;
+    overflow: hidden;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+    ::deep .modal-pos-content .modal-body {
+        flex: 1 1 auto;
+        overflow: hidden;
+        padding: 0.75rem 1.25rem;
+    }
+
+::deep .pos-layout {
+    display: flex;
+    gap: 1rem;
+    height: 100%;
+}
+
+::deep .pos-left {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+::deep .pos-right {
+    width: 290px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+::deep .cart-scroll {
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+    ::deep .cart-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    ::deep .cart-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+::deep .metodo-pago-group {
+    display: flex;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #4361ee;
+}
+
+    ::deep .metodo-pago-group .btn {
+        border-radius: 0;
+        border: none;
+        flex: 1;
+    }
+
+::deep .modal-blur {
+    backdrop-filter: blur(8px);
+    background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+::deep .bi {
+    vertical-align: middle;
+}

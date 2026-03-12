@@ -1,133 +1,225 @@
 @page "/productos"
 @using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Models
 @using MinimarketJade.Web.Services
-@using MinimarketJade.Web.Services.Categorias
 @using MinimarketJade.Web.Helpers
-@inject IProductoService ProductoService
-@inject ICategoriaService CategoriaService
 @rendermode InteractiveServer
 
 <PageTitle>Productos - Minimarket Jade</PageTitle>
 
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Catálogo y Gestión de Productos</h2>
+<div class="container-fluid mt-3 px-4">
 
-        @*Campo de Busqueda *@
-        <div class="d-flex gap-2">
-            <div class="input-group" style="width: 350px;">
-                <span class="input-group-text bg-white">🔍</span>
-                <input type="text" class="form-control"
-                       placeholder="Buscar por nombre o código..."
-                       @bind="textoBusqueda"
-                       @bind:event="oninput" />
+    <div class="prod-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold m-0 d-flex align-items-center"><i class="bi bi-box-seam me-3"></i>Catálogo de Productos</h2>
+            <p class="m-0 opacity-75 small">Gestión de inventario y precios</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="width:300px;">
+                <input type="text" class="form-control border-0 ps-3"
+                       placeholder="Buscar nombre o codigo..."
+                       @bind="busqueda" @bind:event="oninput" />
             </div>
-
-            <button class="btn btn-primary shadow-sm" @onclick="AbrirModal">Nuevo Producto</button>
+            <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirModal">
+                <i class="bi bi-plus-circle-fill me-2 text-success"></i>Nuevo Producto
+            </button>
         </div>
     </div>
 
-    @if (productos == null)
-    {
-        <div class="alert alert-info shadow-sm">Cargando productos desde la base de datos...</div>
-    }
-    else if (!productos.Any())
-    {
-        <div class="alert alert-warning shadow-sm">No hay productos registrados en el Minimarket.</div>
-    }
-    else
-    {
-        @* Tabla PRODUCTOS principal *@
-        <table class="table table-hover table-bordered shadow-sm">
-            <thead class="table-dark">
-                <tr>
-                    <th class="text-center">Código</th>
-                    <th>Nombre</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                    <th>Categoría</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @*Filtrar en caso de rellenar textoBusqueda*@
-                @foreach (var p in productosFiltrados)
-                {
-                    <tr class="@(p.Activo ? "" : "table-secondary text-muted")">
-                        <td class="text-center">
-                            @if (!string.IsNullOrEmpty(p.CodigoBarras))
-                            {
-                                <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(p.CodigoBarras)" style="max-height: 45px;" />
-                                <div style="font-size: 0.7rem;" class="text-muted">@p.CodigoBarras</div>
-                            }
-                        </td>
-                        <td class="align-middle">@p.Nombre</td>
-                        <td class="align-middle">@p.PrecioVenta.ToString("N2") Bs. </td>
-                        <td class="align-middle">@p.StockActual</td>
-                        <td class="align-middle">@p.Categoria.Nombre</td>
-                        <td class="align-middle text-center">
+    @* --- BARRA DE FILTROS --- *@
+    <div class="d-flex flex-wrap gap-2 my-3 align-items-center bg-white p-3 rounded-4 shadow-sm border">
+        <span class="small fw-bold text-muted me-2"><i class="bi bi-filter-left me-1"></i>FILTRAR POR:</span>
 
-                            <button class="btn btn-sm btn-info text-white me-1 shadow-sm" @onclick="() => VerDetalles(p)">Ver</button>
-                            <button class="btn btn-sm btn-warning me-1 shadow-sm" @onclick="() => PrepararEdicion(p)">Editar</button>
+        @* Dropdown Categorías *@
+        <div class="position-relative">
+            <button class="btn btn-light border shadow-sm dropdown-toggle rounded-pill px-3" type="button"
+                    @onclick="() => { mostrarDropCategoria = !mostrarDropCategoria; mostrarDropEstado = false; }">
+                <i class="bi bi-tag-fill me-2 text-primary"></i>
+                @(idCategoriaFiltro == 0 ? "Todas las Categorías" : categorias.FirstOrDefault(c => c.IdCategoria == idCategoriaFiltro)?.Nombre)
+            </button>
+            @if (mostrarDropCategoria)
+            {
+                <div class="position-absolute bg-white shadow-lg border-0 rounded-4 p-3 mt-1" style="width:280px; z-index:1055;">
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text bg-white"><i class="bi bi-search small"></i></span>
+                        <input type="text" class="form-control" placeholder="Buscar categoría..."
+                               @bind="busquedaCategoria" @bind:event="oninput" />
+                    </div>
+                    <div style="max-height:200px; overflow-y:auto;">
+                        <button class="dropdown-item rounded-3 @(idCategoriaFiltro == 0 ? "active" : "")"
+                                @onclick="() => { idCategoriaFiltro = 0; mostrarDropCategoria = false; }">
+                            Todas las categorías
+                        </button>
+                        <hr class="dropdown-divider" />
+                        @foreach (var cat in CategoriasFiltradasMenu)
+                        {
+                            <button class="dropdown-item rounded-3 @(idCategoriaFiltro == cat.IdCategoria ? "active" : "")"
+                                    @onclick="() => { idCategoriaFiltro = cat.IdCategoria; mostrarDropCategoria = false; }">
+                                @cat.Nombre
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
 
-                            @if (p.Activo)
-                            {
-                                <button class="btn btn-sm btn-danger shadow-sm" @onclick="() => InhabilitarProducto(p)">Inhabilitar</button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-success shadow-sm" @onclick="() => HabilitarProducto(p)">Habilitar</button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+        @* Dropdown Estado *@
+        <div class="position-relative">
+            <button class="btn btn-light border shadow-sm dropdown-toggle rounded-pill px-3" type="button"
+                    @onclick="() => { mostrarDropEstado = !mostrarDropEstado; mostrarDropCategoria = false; }">
+                <i class="bi bi-toggle-on me-2 text-warning"></i>
+                @(estadoFiltro == null ? "Todos los Estados" : (estadoFiltro.Value ? "Solo Activos" : "Solo Inactivos"))
+            </button>
+            @if (mostrarDropEstado)
+            {
+                <div class="position-absolute bg-white shadow-lg rounded-4 p-2 mt-1" style="min-width:180px; z-index:1055;">
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == null ? "active" : "")"
+                            @onclick="() => { estadoFiltro = null; mostrarDropEstado = false; }">
+                        Todos
+                    </button>
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == true ? "active" : "")"
+                            @onclick="() => { estadoFiltro = true; mostrarDropEstado = false; }">
+                        Activos
+                    </button>
+                    <button class="dropdown-item rounded-3 @(estadoFiltro == false ? "active" : "")"
+                            @onclick="() => { estadoFiltro = false; mostrarDropEstado = false; }">
+                        Inactivos
+                    </button>
+                </div>
+            }
+        </div>
+
+        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 ms-auto" @onclick="LimpiarFiltros">
+            <i class="bi bi-trash3 me-1"></i>Limpiar Filtros
+        </button>
+    </div>
+
+    @* --- TABLA --- *@
+    <div class="card prod-card p-4">
+        @if (productos == null)
+        {
+            <div class="alert alert-info shadow-sm">Cargando productos...</div>
+        }
+        else if (!ProductosFiltrados.Any())
+        {
+            <div class="alert alert-warning shadow-sm">No se encontraron productos con los filtros aplicados.</div>
+        }
+        else
+        {
+            <div class="table-responsive" style="max-height:60vh;">
+                <table class="table table-modern align-middle">
+                    <thead>
+                        <tr>
+                            <th class="text-center">CÓDIGO</th>
+                            <th>NOMBRE</th>
+                            <th class="text-end">PRECIO</th>
+                            <th class="text-center">STOCK</th>
+                            <th>CATEGORÍA</th>
+                            <th class="text-center">ESTADO</th>
+                            <th class="text-center">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in ProductosFiltrados)
+                        {
+                            <tr class="@(p.Activo ? "" : "fila-inactiva")">
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(p.CodigoBarras))
+                                    {
+                                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(p.CodigoBarras)" style="max-height:40px;" />
+                                        <div class="text-muted" style="font-size:0.65rem;">@p.CodigoBarras</div>
+                                    }
+                                </td>
+                                <td class="fw-bold text-dark">@p.Nombre</td>
+                                <td class="text-end fw-bold text-primary">@p.PrecioVenta.ToString("N2") Bs.</td>
+                                <td class="text-center">
+                                    <span class="badge @(p.StockActual <= p.StockMinimo ? "bg-danger" : "bg-success-subtle text-success") px-3 rounded-pill">
+                                        @p.StockActual
+                                    </span>
+                                </td>
+                                <td><span class="badge bg-light text-dark fw-normal border">@(p.Categoria?.Nombre ?? "N/A")</span></td>
+                                <td class="text-center">
+                                    @if (p.Activo)
+                                    {
+                                        <span class="badge rounded-pill bg-success-subtle text-success px-3">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill bg-danger-subtle text-danger px-3">Inactivo</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-outline-info btn-sm rounded-pill px-3 me-1" @onclick="() => VerDetalle(p)">
+                                        <i class="bi bi-eye me-1"></i>Ver
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm rounded-pill px-3 me-1" @onclick="() => EditarProducto(p)">
+                                        <i class="bi bi-pencil me-1"></i>Editar
+                                    </button>
+                                    @if (p.Activo)
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" @onclick="() => InhabilitarProducto(p)">
+                                            <i class="bi bi-slash-circle me-1"></i>Inhabilitar
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-success btn-sm rounded-pill px-3" @onclick="() => HabilitarProducto(p)">
+                                            <i class="bi bi-check-circle me-1"></i>Habilitar
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
 </div>
 
-@* Modal para registrar/editar los Productos*@
+@* --- MODAL: REGISTRO / EDICIÓN --- *@
 @if (mostrarModal)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content shadow-lg">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">@(esEdicion ? "Editar Producto" : "Registrar Nuevo Producto")</h5>
+    <div class="modal fade show d-block modal-blur" tabindex="-1">
+        <div class="modal-dialog modal-prod modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content modal-prod-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-box-seam me-2"></i>@(esEdicion ? "Editar Producto" : "Registrar Nuevo Producto")</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="CerrarModal"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="productoActual" OnValidSubmit="GuardarProducto">
+                    <EditForm Model="producto" OnValidSubmit="Guardar">
                         <DataAnnotationsValidator />
 
-                        @if (!string.IsNullOrEmpty(mensajeError))
+                        @if (!string.IsNullOrEmpty(error))
                         {
-                            <div class="alert alert-danger py-2">@mensajeError</div>
+                            <div class="alert alert-danger py-2 rounded-3">@error</div>
                         }
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label d-block fw-bold">Código de Barras</label>
-                                <div class="input-group mb-2 shadow-sm">
-                                    <InputText class="form-control bg-light" @bind-Value="productoActual.CodigoBarras" readonly="true" />
+                                <label class="form-label fw-bold">Código de Barras</label>
+                                <div class="input-group shadow-sm">
+                                    <InputText class="form-control bg-light" @bind-Value="producto.CodigoBarras" readonly="true" />
                                     @if (!esEdicion)
                                     {
-                                        <button class="btn btn-dark" type="button" @onclick="GenerarCodigoAutomatico">Generar</button>
+                                        <button class="btn btn-dark" type="button" @onclick="GenerarCodigo">Generar</button>
                                     }
                                 </div>
-                                <div class="border rounded p-2 text-center bg-light" style="min-height: 80px;">
-                                    @if (!string.IsNullOrEmpty(productoActual.CodigoBarras))
+                                <div class="border rounded-3 p-2 text-center bg-light mt-2" style="min-height:70px;">
+                                    @if (!string.IsNullOrEmpty(producto.CodigoBarras))
                                     {
-                                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(productoActual.CodigoBarras)" style="max-height: 60px;" />
-                                        <div class="small fw-bold">@productoActual.CodigoBarras</div>
+                                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(producto.CodigoBarras)" style="max-height:50px;" />
+                                        <div class="small fw-bold">@producto.CodigoBarras</div>
                                     }
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Nombre del Producto</label>
-                                <InputText class="form-control shadow-sm" @bind-Value="productoActual.Nombre" />
-                                <label class="form-label mt-3 fw-bold">Categoría</label>
-                                <InputSelect class="form-select shadow-sm" @bind-Value="productoActual.IdCategoria">
+                                <InputText class="form-control shadow-sm" @bind-Value="producto.Nombre" />
+                                <label class="form-label fw-bold mt-2">Categoría</label>
+                                <InputSelect class="form-select shadow-sm" @bind-Value="producto.IdCategoria">
+                                    <option value="0">Seleccione una categoría...</option>
                                     @foreach (var cat in categorias)
                                     {
                                         <option value="@cat.IdCategoria">@cat.Nombre</option>
@@ -138,39 +230,39 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Unidad Medida</label>
-                                <InputText class="form-control shadow-sm" @bind-Value="productoActual.UnidadMedida" />
+                                <label class="form-label fw-bold">Unidad de Medida</label>
+                                <InputText class="form-control shadow-sm" @bind-Value="producto.UnidadMedida" />
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label fw-bold">Precio Compra</label>
-                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.PrecioCompra" />
+                                <InputNumber class="form-control shadow-sm" @bind-Value="producto.PrecioCompra" />
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label fw-bold">Precio Venta</label>
-                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.PrecioVenta" />
+                                <InputNumber class="form-control shadow-sm" @bind-Value="producto.PrecioVenta" />
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Stock Actual</label>
-                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.StockActual" readonly="@esEdicion" />
+                                <InputNumber class="form-control shadow-sm" @bind-Value="producto.StockActual" readonly="@esEdicion" />
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Stock Mínimo</label>
-                                <InputNumber class="form-control shadow-sm" @bind-Value="productoActual.StockMinimo" />
+                                <InputNumber class="form-control shadow-sm" @bind-Value="producto.StockMinimo" />
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="form-label fw-bold">Descripción</label>
-                            <InputTextArea class="form-control shadow-sm" @bind-Value="productoActual.Descripcion" rows="2" />
+                            <InputTextArea class="form-control shadow-sm" @bind-Value="producto.Descripcion" rows="2" />
                         </div>
 
-                        <div class="modal-footer px-0 pb-0">
-                            <button type="button" class="btn btn-secondary shadow-sm" @onclick="CerrarModal">Cancelar</button>
-                            <button type="submit" class="btn btn-success shadow-sm">
-                                @(esEdicion ? "Guardar Cambios" : "Registrar Producto")
+                        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" @onclick="CerrarModal">Cancelar</button>
+                            <button type="submit" class="btn btn-success rounded-pill px-4">
+                                <i class="bi bi-check2 me-1"></i>@(esEdicion ? "Guardar Cambios" : "Registrar")
                             </button>
                         </div>
                     </EditForm>
@@ -180,190 +272,60 @@
     </div>
 }
 
-@* Modal de Solo Lectura para detalles COMPLETOS *@
-@if (mostrarDetallesModal)
+@* --- MODAL: DETALLE --- *@
+@if (mostrarDetalle)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content border-info shadow-lg">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Ficha Técnica del Producto</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarDetallesModal = false"></button>
+    <div class="modal fade show d-block modal-blur" tabindex="-1">
+        <div class="modal-dialog modal-prod modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content modal-prod-content border-0 shadow-lg">
+                <div class="modal-header bg-info text-white border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-clipboard-data me-2"></i>Ficha del Producto</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarDetalle = false"></button>
                 </div>
                 <div class="modal-body bg-light">
-                    <div class="text-center mb-4 p-3 border rounded bg-white shadow-sm">
-                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(productoActual.CodigoBarras)" style="max-height: 100px;" />
-                        <h3 class="mt-2 text-primary">@productoActual.Nombre</h3>
+                    <div class="text-center mb-3 p-3 border rounded-4 bg-white shadow-sm">
+                        <img src="data:image/png;base64,@BarcodeGenerator.GenerarBase64(producto.CodigoBarras)" style="max-height:80px;" />
+                        <h4 class="mt-2 text-primary fw-bold">@producto.Nombre</h4>
                     </div>
-
                     <div class="row">
                         <div class="col-md-6">
-                            <ul class="list-group shadow-sm mb-3">
+                            <ul class="list-group shadow-sm mb-3 rounded-3 overflow-hidden">
                                 <li class="list-group-item bg-dark text-white fw-bold">Información Básica</li>
-                                <li class="list-group-item"><strong>Código Barras:</strong> @productoActual.CodigoBarras</li>
-                                <li class="list-group-item"><strong>Categoría:</strong> @(productoActual.Categoria?.Nombre ?? "General")</li>
-                                <li class="list-group-item"><strong>Unidad Medida:</strong> @productoActual.UnidadMedida</li>
+                                <li class="list-group-item"><strong>Código:</strong> @producto.CodigoBarras</li>
+                                <li class="list-group-item"><strong>Categoría:</strong> @(producto.Categoria?.Nombre ?? "General")</li>
+                                <li class="list-group-item"><strong>Unidad:</strong> @producto.UnidadMedida</li>
                                 <li class="list-group-item">
                                     <strong>Estado:</strong>
-                                    <span class="badge @(productoActual.Activo ? "bg-success" : "bg-danger")">
-                                        @(productoActual.Activo ? "ACTIVO" : "INACTIVO")
+                                    <span class="badge @(producto.Activo ? "bg-success" : "bg-danger") ms-1">
+                                        @(producto.Activo ? "ACTIVO" : "INACTIVO")
                                     </span>
                                 </li>
                             </ul>
                         </div>
                         <div class="col-md-6">
-                            <ul class="list-group shadow-sm mb-3">
-                                <li class="list-group-item bg-dark text-white fw-bold">Valores e Inventario</li>
-                                <li class="list-group-item d-flex justify-content-between"><strong>Precio Compra:</strong> <span>@productoActual.PrecioCompra.ToString("N2") Bs.</span></li>
-                                <li class="list-group-item d-flex justify-content-between text-success fw-bold"><strong>Precio Venta:</strong> <span>@productoActual.PrecioVenta.ToString("N2") Bs.</span></li>
+                            <ul class="list-group shadow-sm mb-3 rounded-3 overflow-hidden">
+                                <li class="list-group-item bg-dark text-white fw-bold">Precios e Inventario</li>
+                                <li class="list-group-item d-flex justify-content-between"><strong>Precio Compra:</strong> <span>@producto.PrecioCompra.ToString("N2") Bs.</span></li>
+                                <li class="list-group-item d-flex justify-content-between text-success fw-bold"><strong>Precio Venta:</strong> <span>@producto.PrecioVenta.ToString("N2") Bs.</span></li>
                                 <li class="list-group-item d-flex justify-content-between">
                                     <strong>Stock Actual:</strong>
-                                    <span class="badge @(productoActual.StockActual <= productoActual.StockMinimo ? "bg-danger" : "bg-success") fs-6">
-                                        @productoActual.StockActual
-                                    </span>
+                                    <span class="badge @(producto.StockActual <= producto.StockMinimo ? "bg-danger" : "bg-success") fs-6">@producto.StockActual</span>
                                 </li>
-                                <li class="list-group-item d-flex justify-content-between"><strong>Stock Mínimo:</strong> <span>@productoActual.StockMinimo</span></li>
+                                <li class="list-group-item d-flex justify-content-between"><strong>Stock Mínimo:</strong> <span>@producto.StockMinimo</span></li>
                             </ul>
                         </div>
                     </div>
-
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-dark text-white fw-bold">Descripción del Producto</div>
+                    <div class="card shadow-sm rounded-3 overflow-hidden">
+                        <div class="card-header bg-dark text-white fw-bold">Descripción</div>
                         <div class="card-body bg-white">
-                            <p class="card-text">@(string.IsNullOrEmpty(productoActual.Descripcion) ? "Sin descripcion" : productoActual.Descripcion)</p>
+                            <p class="card-text text-muted">@(string.IsNullOrEmpty(producto.Descripcion) ? "Sin descripción." : producto.Descripcion)</p>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-white">
-                    <button type="button" class="btn btn-info text-white w-100 shadow-sm" @onclick="() => mostrarDetallesModal = false">Cerrar Ficha</button>
+                <div class="modal-footer border-0 bg-white">
+                    <button class="btn btn-info text-white w-100 rounded-pill fw-bold shadow-sm" @onclick="() => mostrarDetalle = false">Cerrar Ficha</button>
                 </div>
             </div>
         </div>
     </div>
-}
-
-@code {
-    @* Variables y Estados *@
-    private List<Producto> productos = new();
-    private List<Categoria> categorias = new();
-    private Producto productoActual = new();
-    private bool mostrarModal = false;
-    private bool mostrarDetallesModal = false;
-    private string? mensajeError;
-    private string textoBusqueda = "";
-    private bool esEdicion = false;
-
-    //Logica del Filtrado
-    private IEnumerable<Producto> productosFiltrados =>
-        productos
-            .Where(p =>
-                string.IsNullOrWhiteSpace(textoBusqueda)
-                ? true
-                : (p.Nombre != null && p.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
-                  (p.CodigoBarras != null && p.CodigoBarras.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) ||
-                  (p.Categoria != null && p.Categoria.Nombre != null && p.Categoria.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
-            )
-            .OrderByDescending(p => p.Activo); 
-
-    //Cargar datos en la tabla
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
-
-    private async Task CargarDatos()
-    {
-        productos = await ProductoService.GetAllAsync();
-        categorias = await CategoriaService.GetAllAsync();
-    }
-
-    //Generar Codigo De barras
-    private void GenerarCodigoAutomatico()
-    {
-        Random random = new Random();
-        string codigo = "777";
-        for (int i = 0; i < 6; i++)
-        {
-            codigo += random.Next(0, 10).ToString();
-        }
-        productoActual.CodigoBarras = codigo;
-    }
-
-    private void AbrirModal()
-    {
-        mensajeError = null;
-        esEdicion = false;
-        productoActual = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 0, CodigoBarras = "", IdCategoria = 1 };
-        mostrarModal = true;
-    }
-
-    private void VerDetalles(Producto p)
-    {
-        productoActual = p;
-        mostrarDetallesModal = true;
-    }
-
-    private void PrepararEdicion(Producto p)
-    {
-        mensajeError = null;
-        esEdicion = true;
-        productoActual = new Producto
-        {
-            IdProducto = p.IdProducto,
-            Nombre = p.Nombre,
-            CodigoBarras = p.CodigoBarras,
-            PrecioCompra = p.PrecioCompra,
-            PrecioVenta = p.PrecioVenta,
-            StockActual = p.StockActual,
-            StockMinimo = p.StockMinimo,
-            UnidadMedida = p.UnidadMedida,
-            Descripcion = p.Descripcion,
-            IdCategoria = p.IdCategoria,
-            Activo = p.Activo,
-            Categoria = p.Categoria
-        };
-        mostrarModal = true;
-    }
-
-    private void CerrarModal() => mostrarModal = false;
-
-    private async Task GuardarProducto()
-    {
-        mensajeError = null;
-
-        bool existe = await ProductoService.ExisteNombreAsync(productoActual.Nombre, productoActual.IdProducto);
-
-        if (existe)
-        {
-            mensajeError = $"El nombre '{productoActual.Nombre}' ya lo tiene otro producto. Elige uno diferente.";
-            return;
-        }
-
-        if (esEdicion)
-        {
-            await ProductoService.UpdateAsync(productoActual);
-        }
-        else
-        {
-            await ProductoService.AddAsync(productoActual);
-        }
-
-        mostrarModal = false;
-        await CargarDatos();
-    }
-
-    //Inhabilitar productos
-    private async Task InhabilitarProducto(Producto p)
-    {
-        await ProductoService.InhabilitarAsync(p.IdProducto);
-        await CargarDatos();
-    }
-
-    //Habilitar productos 
-    private async Task HabilitarProducto(Producto p)
-    {
-        p.Activo = true;
-        await ProductoService.UpdateAsync(p);
-        await CargarDatos();
-    }
 }
