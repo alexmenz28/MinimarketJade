@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MinimarketJade.Web.Data.Entities;
 using MinimarketJade.Web.Services;
 using MinimarketJade.Web.Services.Auth;
@@ -14,6 +15,15 @@ public partial class Index : ComponentBase
     [Inject] private IProductoService ProductoService { get; set; } = default!;
     [Inject] private INotaVentaService NotaVentaService { get; set; } = default!;
     [Inject] private IMovInventarioService MovInventarioService { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? _jsModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Pages/Ventas/Index.razor.js");
+    }
     [Inject] private AuthService AuthService { get; set; } = default!;
 
     private List<Ventum> ventas = new();
@@ -57,9 +67,7 @@ public partial class Index : ComponentBase
         c.NombreCompleto.Contains(filtroCliente, StringComparison.OrdinalIgnoreCase) ||
         c.DocumentoIdentidad.Contains(filtroCliente));
 
-    //Totales finales
-    private decimal Total => carrito.Sum(i => i.Subtotal);
-    private decimal Cambio => montoRecibido > Total ? montoRecibido - Total : 0;
+
 
     protected override async Task OnInitializedAsync() => await CargarDatos();
 
@@ -129,17 +137,25 @@ public partial class Index : ComponentBase
     {
         alertaStock = null;
         if (idProducto == 0) return;
+        // Busca el producto en memoria
         var prod = productos.FirstOrDefault(p => p.IdProducto == idProducto);
         if (prod == null) return;
 
+        // Verifica si ya está en el carrito
         var item = carrito.FirstOrDefault(c => c.IdProducto == prod.IdProducto);
         if (prod.StockActual > (item?.Cantidad ?? 0))
         {
-            if (item != null) { 
+            if (item != null)
+            {
                 item.Cantidad++; item.Subtotal = item.Cantidad * item.PrecioUnitario;
             }
-            else carrito.Add(new DetalleVentum { 
-                IdProducto = prod.IdProducto, IdProductoNavigation = prod, Cantidad = 1, PrecioUnitario = prod.PrecioVenta, Subtotal = prod.PrecioVenta 
+            else carrito.Add(new DetalleVentum
+            {
+                IdProducto = prod.IdProducto,
+                IdProductoNavigation = prod,
+                Cantidad = 1,
+                PrecioUnitario = prod.PrecioVenta,
+                Subtotal = prod.PrecioVenta
             });
             idProducto = 0;
         }
@@ -201,6 +217,10 @@ public partial class Index : ComponentBase
         await CargarDatos();
     }
 
+    //Totales finales
+    private decimal Total => carrito.Sum(i => i.Subtotal);
+    private decimal Cambio => montoRecibido > Total ? montoRecibido - Total : 0;
+
     private async Task Cancelar()
     {
         if (carrito.Any())
@@ -220,7 +240,7 @@ public partial class Index : ComponentBase
                 tipoMovimiento: "Entrada",
                 cantidad: d.Cantidad,
                 idUsuario: AuthService.CurrentUser!.IdUsuario,
-                motivo: $"Devolución por anulación de venta"
+                motivo: $"Devolución por anulación de venta: "
             );
         }
         await CargarDatos();
@@ -239,4 +259,56 @@ public partial class Index : ComponentBase
         ventaDetalle = null;
         notaDetalle = null;
     }
+
+    private async Task DescargarPDF()
+    {
+        if (ventaDetalle == null) return;
+
+        var estado = ventaDetalle.Anulada
+            ? "<span class='badge danger'>ANULADA</span>"
+            : "<span class='badge success'>COMPLETADA</span>";
+
+        var ticket = notaDetalle != null ? $"<p class='sub'>🎫 {notaDetalle.NumeroTicket}</p>" : "";
+
+        var filas = string.Join("", ventaDetalle.DetalleVenta.Select(d => $"""
+        <tr>
+            <td>{d.IdProductoNavigation?.Nombre}</td>
+            <td style='text-align:center'>{d.Cantidad}</td>
+            <td style='text-align:right;color:#888'>{d.PrecioUnitario:N2}</td>
+            <td style='text-align:right;font-weight:bold'>{d.Subtotal:N2}</td>
+        </tr>
+    """));
+
+        var cambio = (ventaDetalle.Cambio ?? 0) > 0
+            ? $"<div style='display:flex;justify-content:space-between'><span style='color:#888;font-size:12px'>Cambio</span><span style='color:green;font-weight:bold'>{ventaDetalle.Cambio:N2} Bs.</span></div>"
+            : "";
+
+        var html = $"""
+        <h4>MINIMARKET JADE</h4>
+        <p class='sub'>{ventaDetalle.FechaHora:dd MMMM yyyy, HH:mm}</p>
+        {ticket}
+        <div style='text-align:center;margin:6px 0'>{estado}</div>
+
+        <div class='info-grid'>
+            <div class='info-box'><div class='lbl'>Cliente</div><div class='val'>{ventaDetalle.IdClienteNavigation?.NombreCompleto ?? "Público General"}</div></div>
+            <div class='info-box'><div class='lbl'>Vendedor</div><div class='val'>{ventaDetalle.IdVendedorNavigation?.NombreUsuario}</div></div>
+            <div class='info-box'><div class='lbl'>Método de Pago</div><div class='val'>{ventaDetalle.MetodoPago}</div></div>
+            <div class='info-box'><div class='lbl'>Monto Recibido</div><div class='val'>{ventaDetalle.MontoRecibido:N2} Bs.</div></div>
+        </div>
+
+        <table>
+            <thead><tr><th>DESCRIPCIÓN</th><th style='text-align:center'>CANT.</th><th style='text-align:right'>P.UNIT.</th><th style='text-align:right'>SUBTOTAL</th></tr></thead>
+            <tbody>{filas}</tbody>
+        </table>
+
+        <div style='background:#f8f9fa;padding:12px;border-radius:8px;margin-top:12px'>
+            <div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:#888;font-size:12px'>Subtotal</span><span>{ventaDetalle.Subtotal:N2} Bs.</span></div>
+            <div style='display:flex;justify-content:space-between;border-top:1px solid #ddd;padding-top:8px' class='total'><span>TOTAL</span><span>{ventaDetalle.Total:N2} Bs.</span></div>
+            {cambio}
+        </div>
+    """;
+
+        await _jsModule!.InvokeVoidAsync("imprimirComprobante", html);
+    }
+
 }

@@ -29,7 +29,7 @@ public partial class Index : ComponentBase
 
     // Tabla Principal
     private string busqueda = "";
-    private int idCategoriaFiltro = 0;  
+    private int idCategoriaFiltro = 0;
     private bool? estadoFiltro = null;
     private bool mostrarDropCategoria = false;
     private bool mostrarDropEstado = false;
@@ -152,15 +152,16 @@ public partial class Index : ComponentBase
         //Mandar registros a MovInventario
         if (producto.StockActual > 0)
         {
+
             await MovInventarioService.RegistrarAsync(
                 idProducto: producto.IdProducto,
                 tipoMovimiento: "Nuevo",
                 cantidad: producto.StockActual,
                 idUsuario: AuthService.CurrentUser!.IdUsuario,
-                motivo: $"Registro inicial de producto: {producto.Nombre}"
+                motivo: $"Registro del producto en el sistema: {producto.Nombre}"
             );
+        
         }
-
 
     }
 
