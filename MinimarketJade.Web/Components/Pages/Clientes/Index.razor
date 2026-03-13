@@ -1,8 +1,10 @@
 @page "/clientes"
 @using MinimarketJade.Web.Data.Entities
 @using MinimarketJade.Web.Services.Clientes
+@using MinimarketJade.Web.Services.Auth
 @rendermode InteractiveServer
 @inject IClienteService ClienteService
+@inject AuthService Auth
 
 <PageTitle>Clientes - Minimarket Jade</PageTitle>
 
@@ -52,7 +54,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label>TelÈfono</label>
+                            <label>Telùfono</label>
                             <InputText class="form-control" @bind-Value="clienteActual.Telefono" />
                         </div>
 
@@ -62,7 +64,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label>DirecciÛn</label>
+                            <label>Direcciùn</label>
                             <InputText class="form-control" @bind-Value="clienteActual.Direccion" />
                         </div>
 
@@ -94,7 +96,7 @@ else
                 <th>ID</th>
                 <th>Documento</th>
                 <th>Nombre</th>
-                <th>TelÈfono</th>
+                <th>Telùfono</th>
                 <th>Email</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -121,10 +123,13 @@ else
                             Editar
                         </button>
 
-                        <button class="btn @(estaDeshabilitado ? "btn-success" : "btn-danger") btn-sm"
-                                @onclick="() => CambiarEstado(c.IdCliente)">
-                            @(estaDeshabilitado ? "Habilitar" : "Deshabilitar")
-                        </button>
+                        @if (Auth.IsAdministrador)
+                        {
+                            <button class="btn @(estaDeshabilitado ? "btn-success" : "btn-danger") btn-sm"
+                                    @onclick="() => CambiarEstado(c.IdCliente)">
+                                @(estaDeshabilitado ? "Habilitar" : "Deshabilitar")
+                            </button>
+                        }
                     </td>
                 </tr>
             }

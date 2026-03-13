@@ -2,16 +2,26 @@
 @using MinimarketJade.Web.Data.Entities
 @using MinimarketJade.Web.Services.Compras
 @using MinimarketJade.Web.Services.Proveedores
+@using MinimarketJade.Web.Services.Auth
 @using MinimarketJade.Web.Services
 @using System.Linq
 @inject ICompraService CompraService
 @inject IProveedorService ProveedorService
 @inject IProductoService ProductoService
+@inject AuthService Auth
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Compras - Minimarket Jade</PageTitle>
 
+@if (!Auth.IsAdministrador)
+{
+    <div class="container mt-3">
+        <div class="alert alert-danger">No tiene permisos para acceder a este módulo.</div>
+    </div>
+}
+else
+{
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Entradas de Mercadería</h2>
@@ -215,6 +225,7 @@
             </div>
         </div>
     </div>
+}
 }
 
 @code {

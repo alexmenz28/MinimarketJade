@@ -1,6 +1,18 @@
 @page "/reportes"
 @rendermode InteractiveServer
+@using MinimarketJade.Web.Services.Auth
+@inject AuthService Auth
+
 <PageTitle>Reportes - Minimarket Jade</PageTitle>
 
-<h2>Reportes y KPI</h2>
-<p>Indicadores, ventas y stock crítico.</p>
+@if (!Auth.IsAdministrador)
+{
+    <div class="container mt-3">
+        <div class="alert alert-danger">No tiene permisos para acceder a este módulo.</div>
+    </div>
+}
+else
+{
+    <h2>Reportes y KPI</h2>
+    <p>Indicadores, ventas y stock crítico.</p>
+}

@@ -16,9 +16,12 @@
             </h2>
             <p class="m-0 opacity-75 small">Historial de entradas, salidas y ajustes de stock</p>
         </div>
-        <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirAjuste">
-            <i class="bi bi-sliders me-2 text-warning"></i>Ajuste Manual
-        </button>
+        @if (AuthService.IsAdministrador)
+        {
+            <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirAjuste">
+                <i class="bi bi-sliders me-2 text-warning"></i>Ajuste Manual
+            </button>
+        }
     </div>
 
     @* Filtros *@

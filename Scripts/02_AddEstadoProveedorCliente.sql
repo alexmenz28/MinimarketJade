@@ -19,7 +19,7 @@ BEGIN
     ADD activo BIT NOT NULL DEFAULT 1;
 
     -- Opcional: actualizar filas existentes por si el DEFAULT no se aplicó
-    UPDATE dbo.Proveedor SET activo = 1 WHERE activo IS NULL;
+    -- UPDATE dbo.Proveedor SET activo = 1 WHERE activo IS NULL;
 END
 GO
 
@@ -34,6 +34,6 @@ BEGIN
     ALTER TABLE dbo.Cliente
     ADD activo BIT NOT NULL DEFAULT 1;
 
-    UPDATE dbo.Cliente SET activo = 1 WHERE activo IS NULL;
+    -- UPDATE dbo.Cliente SET activo = 1 WHERE activo IS NULL;
 END
 GO
