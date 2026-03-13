@@ -16,7 +16,8 @@ namespace MinimarketJade.Web.Services.Clientes
         public async Task<List<Cliente>> ObtenerTodosAsync()
         {
             return await _context.Clientes
-                .OrderBy(c => c.NombreCompleto)
+                .Include(c => c.Venta)
+                .OrderBy(c => c.IdCliente)
                 .ToListAsync();
         }
 
@@ -46,20 +47,35 @@ namespace MinimarketJade.Web.Services.Clientes
             }
         }
 
-        public async Task ActualizarAsync(Cliente cliente)
+        public async Task<bool> ActualizarAsync(Cliente cliente)
         {
-            var clienteExistente = await _context.Clientes
-                .FirstOrDefaultAsync(c => c.IdCliente == cliente.IdCliente);
-
-            if (clienteExistente != null)
+            try
             {
-                clienteExistente.DocumentoIdentidad = cliente.DocumentoIdentidad;
-                clienteExistente.NombreCompleto = cliente.NombreCompleto;
-                clienteExistente.Telefono = cliente.Telefono;
-                clienteExistente.Email = cliente.Email;
-                clienteExistente.Direccion = cliente.Direccion;
+                var clienteExistente = await _context.Clientes
+                    .FirstOrDefaultAsync(c => c.IdCliente == cliente.IdCliente);
 
-                await _context.SaveChangesAsync();
+                if (clienteExistente != null)
+                {
+                    clienteExistente.DocumentoIdentidad = cliente.DocumentoIdentidad;
+                    clienteExistente.NombreCompleto = cliente.NombreCompleto;
+                    clienteExistente.Telefono = cliente.Telefono;
+                    clienteExistente.Email = cliente.Email;
+                    clienteExistente.Direccion = cliente.Direccion;
+
+                    await _context.SaveChangesAsync();
+                }
+
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException != null &&
+                    ex.InnerException.Message.Contains("UQ_Cliente_documento"))
+                {
+                    return false;
+                }
+
+                throw;
             }
         }
 
@@ -69,6 +85,17 @@ namespace MinimarketJade.Web.Services.Clientes
             if (cliente != null)
             {
                 _context.Clientes.Remove(cliente);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task CambiarEstadoAsync(int id)
+        {
+            var cliente = await _context.Clientes.FindAsync(id);
+
+            if (cliente != null)
+            {
+                cliente.Activo = !cliente.Activo;
                 await _context.SaveChangesAsync();
             }
         }

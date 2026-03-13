@@ -32,6 +32,16 @@ public class VentaService : IVentaService
             .FirstOrDefaultAsync(v => v.IdVenta == id);
     }
 
+    public async Task<List<Ventum>> GetByClienteAsync(int idCliente)
+    {
+        return await _db.Venta
+            .Include(v => v.IdVendedorNavigation)
+            .Include(v => v.IdClienteNavigation)
+            .Where(v => v.IdCliente == idCliente)
+            .OrderByDescending(v => v.FechaHora)
+            .ToListAsync();
+    }
+
     public async Task<int> AddAsync(Ventum venta)
     {
         _db.Venta.Add(venta);

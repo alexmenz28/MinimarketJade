@@ -1,6 +1,8 @@
 @page "/clientes"
 @using MinimarketJade.Web.Data.Entities
 @using MinimarketJade.Web.Services.Clientes
+@using MinimarketJade.Web.Services
+@inject IVentaService VentaService
 @rendermode InteractiveServer
 @inject IClienteService ClienteService
 
@@ -12,10 +14,29 @@
     Nuevo Cliente
 </button>
 
-<input class="form-control mb-3"
-       placeholder="Buscar por ID, nombre o documento..."
-       @bind="textoBusqueda"
-       @bind:event="oninput" />
+<div class="row mb-3">
+
+    <div class="col-3">
+        <select class="form-select" @bind="tipoBusqueda">
+            <option value="Id">Buscar por ID</option>
+            <option value="Documento">Buscar por Documento</option>
+            <option value="Nombre">Buscar por Nombre</option>
+            <option value="Recurrentes">Clientes Recurrentes</option>
+            <option value="NoRecurrentes">Clientes No Recurrentes</option>
+        </select>
+    </div>
+
+    @if (tipoBusqueda != "Recurrentes" && tipoBusqueda != "NoRecurrentes")
+    {
+        <div class="col">
+            <input class="form-control"
+                   placeholder="Escriba para buscar..."
+                   @bind="textoBusqueda"
+                   @bind:event="oninput" />
+        </div>
+    }
+
+</div>
 
 @if (mostrarFormulario)
 {
@@ -103,30 +124,78 @@ else
         <tbody>
             @foreach (var c in clientesFiltrados)
             {
-                var estaDeshabilitado = clientesDeshabilitados.Contains(c.IdCliente);
+                var estaDeshabilitado = !c.Activo;
 
-                <tr class="@(estaDeshabilitado ? "table-secondary" : "")">
+                <tr class="@(estaDeshabilitado ? "table-secondary" : "")"
+                    style="cursor:pointer"
+                    @onclick="() => VerHistorial(c.IdCliente)">
+
                     <td>@c.IdCliente</td>
                     <td>@c.DocumentoIdentidad</td>
                     <td>@c.NombreCompleto</td>
                     <td>@c.Telefono</td>
                     <td>@c.Email</td>
-                    <td>
-                        @(estaDeshabilitado ? "Deshabilitado" : "Activo")
-                    </td>
+                    <td>@(estaDeshabilitado ? "Deshabilitado" : "Activo")</td>
+
                     <td>
                         <button class="btn btn-warning btn-sm me-2"
                                 @onclick="() => Editar(c)"
+                                @onclick:stopPropagation="true"
                                 disabled="@estaDeshabilitado">
                             Editar
                         </button>
 
                         <button class="btn @(estaDeshabilitado ? "btn-success" : "btn-danger") btn-sm"
-                                @onclick="() => CambiarEstado(c.IdCliente)">
+                                @onclick="() => CambiarEstado(c.IdCliente)"
+                                @onclick:stopPropagation="true">
                             @(estaDeshabilitado ? "Habilitar" : "Deshabilitar")
                         </button>
                     </td>
                 </tr>
+
+                @if (clienteSeleccionadoId == c.IdCliente)
+                {
+                    <tr class="table-light">
+                        <td colspan="7">
+
+                            @if (historialVentas == null)
+                            {
+                                <p class="text-muted">Cargando historial...</p>
+                            }
+                            else if (!historialVentas.Any())
+                            {
+                                <div class="alert alert-info m-2">
+                                    Este cliente no tiene compras registradas.
+                                </div>
+                            }
+                            else
+                            {
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Vendedor</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var v in historialVentas)
+                                        {
+                                            <tr>
+                                                <td>@v.FechaHora.ToString("dd/MM/yyyy HH:mm")</td>
+                                                <td>@v.IdVendedorNavigation.NombreUsuario</td>
+                                                <td>@v.Total.ToString("N2") Bs</td>
+                                                <td>@(v.Anulada ? "Anulada" : "Completada")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -139,19 +208,53 @@ else
     private bool mostrarFormulario = false;
     private string? mensajeError;
     private string textoBusqueda = "";
+    private List<Ventum>? historialVentas;
+    private int? clienteSeleccionadoId;
+    private string tipoBusqueda = "Id";
 
-    private IEnumerable<Cliente> clientesFiltrados =>
-        clientes == null
-            ? new List<Cliente>()
-            : clientes.Where(c =>
-                string.IsNullOrWhiteSpace(textoBusqueda) ||
-                c.IdCliente.ToString().Contains(textoBusqueda) ||
-                c.NombreCompleto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-                c.DocumentoIdentidad.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
-            );
+    private IEnumerable<Cliente> clientesFiltrados
+    {
+        get
+        {
+            if (clientes == null)
+                return new List<Cliente>();
 
-    // Lista local SOLO visual
-    private List<int> clientesDeshabilitados = new();
+            IEnumerable<Cliente> resultado = clientes;
+
+            switch (tipoBusqueda)
+            {
+                case "Id":
+                    resultado = clientes.Where(c =>
+                        string.IsNullOrWhiteSpace(textoBusqueda) ||
+                        c.IdCliente.ToString().Contains(textoBusqueda));
+                    break;
+
+                case "Documento":
+                    resultado = clientes.Where(c =>
+                        string.IsNullOrWhiteSpace(textoBusqueda) ||
+                        c.DocumentoIdentidad.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+                    break;
+
+                case "Nombre":
+                    resultado = clientes.Where(c =>
+                        string.IsNullOrWhiteSpace(textoBusqueda) ||
+                        c.NombreCompleto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+                    break;
+
+                case "Recurrentes":
+                    resultado = clientes.Where(c =>
+                        c.Venta.Count(v => !v.Anulada) >= 5);
+                    break;
+
+                case "NoRecurrentes":
+                    resultado = clientes.Where(c =>
+                        c.Venta.Count(v => !v.Anulada) < 5);
+                    break;
+            }
+
+            return resultado;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -200,19 +303,42 @@ else
         }
         else
         {
-            await ClienteService.ActualizarAsync(clienteActual);
+            var actualizado = await ClienteService.ActualizarAsync(clienteActual);
+
+            if (!actualizado)
+            {
+                mensajeError = "Ya existe un cliente con ese documento.";
+                return;
+            }
         }
 
         mostrarFormulario = false;
         await CargarClientes();
     }
 
-    private void CambiarEstado(int id)
+    private async Task CambiarEstado(int id)
     {
-        if (clientesDeshabilitados.Contains(id))
-            clientesDeshabilitados.Remove(id);
-        else
-            clientesDeshabilitados.Add(id);
+        historialVentas = null;
+        clienteSeleccionadoId = null;
+
+        await ClienteService.CambiarEstadoAsync(id);
+
+        await Task.Delay(50); // pequeño respiro al contexto
+
+        await CargarClientes();
+    }
+
+    private async Task VerHistorial(int idCliente)
+    {
+        if (clienteSeleccionadoId == idCliente)
+        {
+            clienteSeleccionadoId = null;
+            historialVentas = null;
+            return;
+        }
+
+        clienteSeleccionadoId = idCliente;
+        historialVentas = await VentaService.GetByClienteAsync(idCliente);
     }
 
     private void Cancelar()

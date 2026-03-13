@@ -5,7 +5,6 @@ using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Productos;
 using MinimarketJade.Web.Helpers;
 using Microsoft.AspNetCore.Components;
-using MinimarketJade.Web.Services;
 using MinimarketJade.Web.Services.Auth;
 
 namespace MinimarketJade.Web.Components.Pages.Productos;
