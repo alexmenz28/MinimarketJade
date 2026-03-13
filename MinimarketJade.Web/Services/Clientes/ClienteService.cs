@@ -25,26 +25,56 @@ namespace MinimarketJade.Web.Services.Clientes
             return await _context.Clientes.FindAsync(id);
         }
 
-        public async Task CrearAsync(Cliente cliente)
+        public async Task<bool> CrearAsync(Cliente cliente)
         {
-            _context.Clientes.Add(cliente);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Clientes.Add(cliente);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                // Error por restricción UNIQUE
+                if (ex.InnerException != null &&
+                    ex.InnerException.Message.Contains("UQ_Cliente_documento"))
+                {
+                    return false;
+                }
+
+                throw; // si es otro error, lo lanza normal
+            }
         }
 
-        public async Task ActualizarAsync(Cliente cliente)
+        public async Task<bool> ActualizarAsync(Cliente cliente)
         {
-            var clienteExistente = await _context.Clientes
-                .FirstOrDefaultAsync(c => c.IdCliente == cliente.IdCliente);
-
-            if (clienteExistente != null)
+            try
             {
-                clienteExistente.DocumentoIdentidad = cliente.DocumentoIdentidad;
-                clienteExistente.NombreCompleto = cliente.NombreCompleto;
-                clienteExistente.Telefono = cliente.Telefono;
-                clienteExistente.Email = cliente.Email;
-                clienteExistente.Direccion = cliente.Direccion;
+                var clienteExistente = await _context.Clientes
+                    .FirstOrDefaultAsync(c => c.IdCliente == cliente.IdCliente);
 
-                await _context.SaveChangesAsync();
+                if (clienteExistente != null)
+                {
+                    clienteExistente.DocumentoIdentidad = cliente.DocumentoIdentidad;
+                    clienteExistente.NombreCompleto = cliente.NombreCompleto;
+                    clienteExistente.Telefono = cliente.Telefono;
+                    clienteExistente.Email = cliente.Email;
+                    clienteExistente.Direccion = cliente.Direccion;
+
+                    await _context.SaveChangesAsync();
+                }
+
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException != null &&
+                    ex.InnerException.Message.Contains("UQ_Cliente_documento"))
+                {
+                    return false;
+                }
+
+                throw;
             }
         }
 
