@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using MinimarketJade.Web.Data;
 using MinimarketJade.Web.Data.Entities;
 
@@ -27,14 +29,59 @@ namespace MinimarketJade.Web.Services.Proveedores
 
         public async Task CrearAsync(Proveedor proveedor)
         {
+            // Validar modelo (DataAnnotations)
+            ValidateProveedor(proveedor);
+
+            // Validar unicidad NIT/RUC
+            if (await ExisteNitAsync(proveedor.NitRuc))
+            {
+                throw new InvalidOperationException("El NIT/RUC ya está registrado.");
+            }
+
             _context.Proveedors.Add(proveedor);
             await _context.SaveChangesAsync();
         }
 
         public async Task ActualizarAsync(Proveedor proveedor)
         {
-            _context.Proveedors.Update(proveedor);
-            await _context.SaveChangesAsync();
+            // Validar modelo (DataAnnotations)
+            ValidateProveedor(proveedor);
+
+            // Validar unicidad NIT/RUC (excluyendo el propio registro)
+            if (await ExisteNitAsync(proveedor.NitRuc, proveedor.IdProveedor))
+            {
+                throw new InvalidOperationException("El NIT/RUC ya está registrado en otro proveedor.");
+            }
+
+            // Buscar la entidad existente y actualizar campos individualmente
+            var existente = await _context.Proveedors
+                .FirstOrDefaultAsync(p => p.IdProveedor == proveedor.IdProveedor);
+
+            if (existente != null)
+            {
+                existente.RazonSocial = proveedor.RazonSocial;
+                existente.NitRuc = proveedor.NitRuc;
+                existente.Telefono = proveedor.Telefono;
+                existente.Email = proveedor.Email;
+                existente.Direccion = proveedor.Direccion;
+                existente.Contacto = proveedor.Contacto;
+                // Si la propiedad Activo está mapeada en BD y se usa, también se puede actualizar:
+                existente.Activo = proveedor.Activo;
+
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        private void ValidateProveedor(Proveedor proveedor)
+        {
+            var context = new ValidationContext(proveedor);
+            var results = new List<ValidationResult>();
+            bool isValid = Validator.TryValidateObject(proveedor, context, results, validateAllProperties: true);
+            if (!isValid)
+            {
+                var messages = results.Select(r => r.ErrorMessage).Where(m => !string.IsNullOrWhiteSpace(m));
+                throw new ValidationException(string.Join("; ", messages));
+            }
         }
 
         public async Task EliminarAsync(int id)
@@ -79,6 +126,33 @@ namespace MinimarketJade.Web.Services.Proveedores
             }
 
             return await _context.Proveedors.AnyAsync(p => p.NitRuc == nitRuc); 
+        }
+
+        public async Task<(List<Proveedor> Frecuentes, List<Proveedor> Ocasionales)> ObtenerClasificacionFrecuenciaAsync(int meses = 6, int umbral = 3)
+        {
+            // Fecha desde la cual contar compras
+            var desde = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-meses));
+
+            // Agrupar compras por proveedor en el periodo
+            var grupos = await _context.Compras
+                .Where(c => c.Fecha >= desde)
+                .GroupBy(c => c.IdProveedor)
+                .Select(g => new { IdProveedor = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var frecuentesIds = grupos.Where(g => g.Count >= umbral).Select(g => g.IdProveedor).ToList();
+
+            var frecuentes = await _context.Proveedors
+                .Where(p => frecuentesIds.Contains(p.IdProveedor) && p.Activo)
+                .OrderBy(p => p.RazonSocial)
+                .ToListAsync();
+
+            var ocasionales = await _context.Proveedors
+                .Where(p => !frecuentesIds.Contains(p.IdProveedor) && p.Activo)
+                .OrderBy(p => p.RazonSocial)
+                .ToListAsync();
+
+            return (frecuentes, ocasionales);
         }
     }
 }
