@@ -13,21 +13,22 @@ public class VentaService : IVentaService
         _db = db;
     }
 
+    //Traemos los datos de otras tablas, para la vista general
     public async Task<List<Ventum>> GetAllAsync()
     {
         return await _db.Venta 
-            .Include(v => v.IdVendedorNavigation) // Trae los datos del Usuario
-            .Include(v => v.IdClienteNavigation)  // Trae los datos del Cliente
-            .OrderByDescending(v => v.FechaHora)  // Las más recientes primero
+            .Include(v => v.IdVendedorNavigation) 
+            .Include(v => v.IdClienteNavigation)  
+            .OrderByDescending(v => v.FechaHora)  
             .ToListAsync();
     }
-
+    //cargar los detalles de una venta en especifico
     public async Task<Ventum?> GetByIdAsync(int id)
     {
         return await _db.Venta
             .Include(v => v.IdVendedorNavigation)
             .Include(v => v.IdClienteNavigation)
-            .Include(v => v.DetalleVenta) // Trae los productos de esa venta
+            .Include(v => v.DetalleVenta) 
             .FirstOrDefaultAsync(v => v.IdVenta == id);
     }
 

@@ -5,6 +5,8 @@ using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Productos;
 using MinimarketJade.Web.Helpers;
 using Microsoft.AspNetCore.Components;
+using MinimarketJade.Web.Services;
+using MinimarketJade.Web.Services.Auth;
 
 namespace MinimarketJade.Web.Components.Pages.Productos;
 
@@ -12,6 +14,8 @@ public partial class Index : ComponentBase
 {
     [Inject] private IProductoService ProductoService { get; set; } = default!;
     [Inject] private ICategoriaService CategoriaService { get; set; } = default!;
+    [Inject] private IMovInventarioService MovInventarioService { get; set; } = default!;
+    [Inject] private AuthService AuthService { get; set; } = default!;
 
     private List<Producto> productos = new();
     private IReadOnlyList<CategoriaDto> categorias = Array.Empty<CategoriaDto>();
@@ -26,7 +30,7 @@ public partial class Index : ComponentBase
 
     // Tabla Principal
     private string busqueda = "";
-    private int idCategoriaFiltro = 0;  
+    private int idCategoriaFiltro = 0;
     private bool? estadoFiltro = null;
     private bool mostrarDropCategoria = false;
     private bool mostrarDropEstado = false;
@@ -153,6 +157,21 @@ public partial class Index : ComponentBase
         {
             error = "❌ Error al conectar con la base de datos: " + ex.Message;
         }
+
+        //Mandar registros a MovInventario
+        if (producto.StockActual > 0)
+        {
+
+            await MovInventarioService.RegistrarAsync(
+                idProducto: producto.IdProducto,
+                tipoMovimiento: "Nuevo",
+                cantidad: producto.StockActual,
+                idUsuario: AuthService.CurrentUser!.IdUsuario,
+                motivo: $"Registro del producto en el sistema: {producto.Nombre}"
+            );
+        
+        }
+
     }
 
     private async Task InhabilitarProducto(Producto p)

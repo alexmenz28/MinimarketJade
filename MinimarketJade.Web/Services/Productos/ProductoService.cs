@@ -67,7 +67,7 @@ public class ProductoService : IProductoService
         var producto = await _db.Productos.FindAsync(new object[] { idProducto }, ct);
         if (producto != null)
         {
-            // Restamos la cantidad del stock actual
+            // Ajustamos la cantidad del stock actual
             producto.StockActual -= cantidad;
             await _db.SaveChangesAsync(ct);
         }
