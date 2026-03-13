@@ -44,11 +44,8 @@ else
             </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(mensajeError))
-        {
-            <div class="alert alert-danger">@mensajeError</div>
-        }
-        @if (!string.IsNullOrEmpty(mensajeOk))
+        @if (!string.IsNullOrEmpty(mensajeOk) &&
+            (mensajeOk == "Usuario creado correctamente." || mensajeOk == "Usuario actualizado."))
         {
             <div class="alert alert-success">@mensajeOk</div>
         }
@@ -120,6 +117,11 @@ else
                     <button type="button" class="btn-close" @onclick="CerrarModales"></button>
                 </div>
                 <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger">@mensajeError</div>
+                    }
+
                     <div class="mb-3">
                         <label class="form-label">Usuario</label>
                         <input class="form-control" @bind="formUsuario.NombreUsuario" />
@@ -154,6 +156,11 @@ else
                     <button type="button" class="btn-close" @onclick="CerrarModales"></button>
                 </div>
                 <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger">@mensajeError</div>
+                    }
+
                     <div class="mb-3">
                         <label class="form-label">Usuario</label>
                         <input class="form-control" @bind="formUsuario.NombreUsuario" />

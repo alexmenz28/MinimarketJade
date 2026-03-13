@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MinimarketJade.Web.Data.Entities;
@@ -14,7 +14,7 @@ public partial class Producto
     public string? CodigoBarras { get; set; }
 
     [Column("nombre")]
-    [Required]
+    [Required(ErrorMessage = "El nombre del producto es obligatorio.")]
     public string Nombre { get; set; } = null!;
 
     [Column("descripcion")]
