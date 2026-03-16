@@ -1,0 +1,218 @@
+@page "/compras"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Compras
+@using MinimarketJade.Web.Services.Proveedores
+@using MinimarketJade.Web.Services
+@using System.Linq
+@inject ICompraService CompraService
+@inject IProveedorService ProveedorService
+@inject IProductoService ProductoService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Compras - Minimarket Jade</PageTitle>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Entradas de Mercadería</h2>
+        <div>
+            <button class="btn btn-primary shadow-sm" @onclick="AbrirModal">Nueva Compra</button>
+        </div>
+    </div>
+
+    @if (compras == null)
+    {
+        <div class="alert alert-info">Cargando compras...</div>
+    }
+    else if (!compras.Any())
+    {
+        <div class="alert alert-warning">No hay compras registradas.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered shadow-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Proveedor</th>
+                        <th>Número Factura</th>
+                        <th>Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in compras)
+                    {
+                        <tr>
+                            <td class="align-middle">@c.Fecha.ToString("yyyy-MM-dd")</td>
+                            <td class="align-middle">@c.IdProveedorNavigation?.RazonSocial</td>
+                            <td class="align-middle">@c.NumeroFactura</td>
+                            <td class="align-middle">@c.Total.ToString("N2")</td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-sm btn-info me-1" @onclick="() => VerDetalle(c.IdCompra)">Ver</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* Modal para nueva compra *@
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Registrar Nueva Compra</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Proveedor</label>
+                            <InputSelect class="form-select" @bind-Value="compraActual.IdProveedor">
+                                <option value="0">-- Seleccionar proveedor --</option>
+                                @foreach (var prov in (proveedores ?? Enumerable.Empty<Proveedor>()).Where(p => p.Activo))
+                                {
+                                    <option value="@prov.IdProveedor">@prov.RazonSocial</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Número Factura</label>
+                            <InputText class="form-control" @bind-Value="compraActual.NumeroFactura" />
+                            <div class="form-text">Si lo dejas vacío, se generará automáticamente.</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Buscar Producto</label>
+                            <div class="input-group mb-2">
+                                <input class="form-control" placeholder="Buscar por nombre o código..." @bind="textoBusquedaProducto" @bind:event="oninput" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="LimpiarBusqueda">Limpiar</button>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(textoBusquedaProducto))
+                            {
+                                <div style="max-height: 220px; overflow:auto;">
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Producto</th>
+                                                <th>Stock</th>
+                                                <th>Precio Compra</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var prod in productosFiltrados)
+                                            {
+                                                <tr>
+                                                    <td>@prod.Nombre</td>
+                                                    <td>@prod.StockActual</td>
+                                                    <td>@prod.PrecioCompra.ToString("N2")</td>
+                                                    <td><button class="btn btn-sm btn-primary" @onclick="() => AgregarLinea(prod)">Agregar</button></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h5>Detalles de la Compra</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unitario</th>
+                                        <th>Subtotal</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ln in lineas)
+                                    {
+                                        <tr>
+                                            <td>@ln.Producto.Nombre</td>
+                                            <td><InputNumber class="form-control form-control-sm" @bind-Value="ln.Cantidad" /></td>
+                                            <td><InputNumber class="form-control form-control-sm" @bind-Value="ln.PrecioUnitario" /></td>
+                                            <td>@( (ln.Cantidad * ln.PrecioUnitario).ToString("N2") )</td>
+                                            <td><button class="btn btn-sm btn-danger" @onclick="() => RemoverLinea(ln)">Quitar</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <div class="me-3">Subtotal: <strong>@Subtotal.ToString("N2")</strong></div>
+                            <div>Total: <strong>@Total.ToString("N2")</strong></div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                    <button class="btn btn-success" @onclick="GuardarCompra">Registrar Compra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarDetalleModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Detalle Compra</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarDetalleModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (compraDetalle != null)
+                    {
+                        <div class="mb-2"><strong>Proveedor:</strong> @compraDetalle.IdProveedorNavigation?.RazonSocial</div>
+                        <div class="mb-2"><strong>Factura:</strong> @compraDetalle.NumeroFactura</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unitario</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var d in compraDetalle.DetalleCompras)
+                                    {
+                                        <tr>
+                                            <td>@d.IdProductoNavigation?.Nombre</td>
+                                            <td>@d.Cantidad</td>
+                                            <td>@d.PrecioUnitario.ToString("N2")</td>
+                                            <td>@d.Subtotal.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-info w-100" @onclick="() => mostrarDetalleModal = false">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
