@@ -138,5 +138,72 @@ namespace MinimarketJade.Web.Services.Compras
             if (string.IsNullOrWhiteSpace(numeroFactura)) return false;
             return await _context.Compras.AnyAsync(c => c.NumeroFactura == numeroFactura);
         }
+
+        // KPI: Precio de Compra Promedio por Producto (mensual)
+        public async Task<List<PrecioPromedioProductoDto>> ObtenerPrecioCompraPromedioPorProductoAsync(int year, int month)
+        {
+            // Sumar subtotal y cantidad por producto en el mes indicado (compras recibidas)
+            var desde = new DateOnly(year, month, 1);
+            var hasta = desde.AddMonths(1);
+
+            var query = from dc in _context.DetalleCompras
+                        join c in _context.Compras on dc.IdCompra equals c.IdCompra
+                        join p in _context.Productos on dc.IdProducto equals p.IdProducto
+                        where c.Estado == "recibida" && c.Fecha >= desde && c.Fecha < hasta
+                        group new { dc, p } by new { dc.IdProducto, p.Nombre, p.PrecioCompra } into g
+                        select new PrecioPromedioProductoDto
+                        {
+                            IdProducto = g.Key.IdProducto,
+                            NombreProducto = g.Key.Nombre,
+                            TotalGastado = g.Sum(x => x.dc.Subtotal),
+                            CantidadTotal = g.Sum(x => x.dc.Cantidad),
+                            PrecioPromedio = g.Sum(x => x.dc.Subtotal) / (g.Sum(x => x.dc.Cantidad) == 0 ? 1 : g.Sum(x => x.dc.Cantidad)),
+                            // Usar PrecioCompra del producto como proxy de costo estándar
+                            CostoEstandar = g.Key.PrecioCompra
+                        };
+
+            return await query.OrderByDescending(x => x.TotalGastado).ToListAsync();
+        }
+
+        // KPI: Gasto por Proveedor y concentración Top3
+        public async Task<List<GastoProveedorDto>> ObtenerGastoPorProveedorAsync(DateTime? desde = null, DateTime? hasta = null)
+        {
+            var compras = _context.Compras.AsQueryable();
+
+            if (desde.HasValue)
+            {
+                var d = DateOnly.FromDateTime(desde.Value);
+                compras = compras.Where(c => c.Fecha >= d);
+            }
+            if (hasta.HasValue)
+            {
+                var h = DateOnly.FromDateTime(hasta.Value);
+                compras = compras.Where(c => c.Fecha <= h);
+            }
+
+            var totalGeneral = await compras.SumAsync(c => (decimal?)c.Total) ?? 0m;
+
+            var query = from c in compras
+                        join p in _context.Proveedors on c.IdProveedor equals p.IdProveedor
+                        group c by new { p.IdProveedor, p.RazonSocial } into g
+                        select new GastoProveedorDto
+                        {
+                            IdProveedor = g.Key.IdProveedor,
+                            RazonSocial = g.Key.RazonSocial,
+                            TotalGastado = g.Sum(x => x.Total),
+                            Porcentaje = totalGeneral == 0 ? 0 : (g.Sum(x => x.Total) / totalGeneral * 100)
+                        };
+
+            return await query.OrderByDescending(x => x.TotalGastado).ToListAsync();
+        }
+
+        public async Task<decimal> ObtenerConcentracionTop3ProveedoresAsync(DateTime? desde = null, DateTime? hasta = null)
+        {
+            var listado = await ObtenerGastoPorProveedorAsync(desde, hasta);
+            var top3 = listado.Take(3).Sum(x => x.TotalGastado);
+            var total = listado.Sum(x => x.TotalGastado);
+            if (total == 0) return 0m;
+            return top3 / total * 100m; // retorna porcentaje (ej: 60 means 60%)
+        }
     }
 }

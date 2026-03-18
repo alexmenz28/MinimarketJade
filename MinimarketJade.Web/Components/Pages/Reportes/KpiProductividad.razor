@@ -1,0 +1,199 @@
+@page "/reportes/kpi-productividad"
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Compras
+@inject ICompraService CompraService
+@rendermode InteractiveServer
+
+<div class="container py-3">
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">KPI Estratégico 2 — Productividad de Compra por Proveedor</h5>
+            <p class="card-text text-muted">Módulo ERP: Proveedores / Compras · Responsable: Administrador / Dueño · Medición: Trimestral</p>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <small class="text-muted">Total Compras (trimestre)</small>
+                    <div class="h4 mt-2 text-dark">@TotalComprasFormateado</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <small class="text-muted">Concentración Top 3</small>
+                    <div class="h4 mt-2 text-dark">@ConcentracionPercent.ToString("0")% </div>
+                    <small class="text-muted">Meta: ≥ 60%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <small class="text-muted">N.º de Proveedores</small>
+                    <div class="h4 mt-2 text-dark">@NumProveedores</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <small class="text-muted">Proveedor Principal</small>
+                    <div class="h5 mt-2 text-dark">@ProveedorPrincipal</div>
+                    <small class="text-muted">@ProveedorPrincipalPercent.ToString("0.#")% del total</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">PROGRESO HACIA LA META — TOP 3 PROVEEDORES</div>
+                <div class="progress mt-2" style="height:26px">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width:@ConcentracionPercent%">@ConcentracionPercent.ToString("0.#")%</div>
+                </div>
+                <div class="small text-muted mt-1">Meta: 60%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="small text-muted mb-2">PARTICIPACIÓN POR PROVEEDOR (% DEL TOTAL)</div>
+                    @if (GastosPorProveedor == null)
+                    {
+                        <div>Cargando...</div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var g in GastosPorProveedor.Take(10))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                    <div>
+                                        <div class="fw-bold">@g.RazonSocial</div>
+                                        <div class="small text-muted">@g.Porcentaje.ToString("0.#")%</div>
+                                    </div>
+                                    <div class="text-end">Bs. @g.TotalGastado.ToString("N0")</div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="small text-muted mb-2">DISTRIBUCIÓN DEL GASTO</div>
+                    @if (DonutSegments == null || !DonutSegments.Any())
+                    {
+                        <div>Cargando gráfico...</div>
+                    }
+                    else
+                    {
+                        <svg width="260" height="260" viewBox="0 0 42 42">
+                            @foreach (var s in DonutSegments)
+                            {
+                                <path d="@s.Path" fill="none" stroke="@s.Color" stroke-width="4"></path>
+                            }
+                            <circle cx="21" cy="21" r="10" fill="#fff"></circle>
+                        </svg>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<GastoProveedorDto>? GastosPorProveedor;
+    private List<DonutSegment> DonutSegments = new();
+    private decimal ConcentracionPercent = 0m;
+    private string TotalComprasFormateado = "Bs. 0";
+    private int NumProveedores = 0;
+    private string ProveedorPrincipal = "-";
+    private decimal ProveedorPrincipalPercent = 0m;
+
+    private System.Threading.CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new System.Threading.CancellationTokenSource();
+        await LoadAsync();
+        _ = AutoRefreshAsync(_cts.Token);
+    }
+
+    private async Task LoadAsync()
+    {
+        var hasta = DateTime.UtcNow;
+        var desde = hasta.AddMonths(-3);
+        GastosPorProveedor = await CompraService.ObtenerGastoPorProveedorAsync(desde, hasta);
+        var total = GastosPorProveedor.Sum(x => x.TotalGastado);
+        TotalComprasFormateado = $"Bs. {total.ToString("N0")}";
+        NumProveedores = GastosPorProveedor.Count;
+        ConcentracionPercent = (decimal)await CompraService.ObtenerConcentracionTop3ProveedoresAsync(desde, hasta);
+        if (GastosPorProveedor.Any())
+        {
+            var top = GastosPorProveedor.First();
+            ProveedorPrincipal = top.RazonSocial ?? "-";
+            ProveedorPrincipalPercent = top.Porcentaje;
+        }
+
+        DonutSegments.Clear();
+        var colors = new[] { "#1f77b4", "#2ca02c", "#ff7f0e", "#d62728", "#9edae5" };
+        double start = 0;
+        var list = GastosPorProveedor.Take(5).ToList();
+        foreach (var item in list.Select((v, i) => (v, i)))
+        {
+            var g = item.v; var idx = item.i;
+            var sweep = (double)(g.TotalGastado / (total == 0 ? 1 : total)) * 360.0;
+            DonutSegments.Add(CreateDonutSegment(21,21,15, start, start + sweep, colors[idx % colors.Length]));
+            start += sweep;
+        }
+
+        StateHasChanged();
+    }
+
+    private DonutSegment CreateDonutSegment(double cx, double cy, double r, double startAngle, double endAngle, string color)
+    {
+        double s = (Math.PI / 180) * (startAngle - 90);
+        double e = (Math.PI / 180) * (endAngle - 90);
+        double x1 = cx + r * Math.Cos(s);
+        double y1 = cy + r * Math.Sin(s);
+        double x2 = cx + r * Math.Cos(e);
+        double y2 = cy + r * Math.Sin(e);
+        var large = endAngle - startAngle > 180 ? 1 : 0;
+        var path = $"M {x1} {y1} A {r} {r} 0 {large} 1 {x2} {y2}";
+        return new DonutSegment { Path = path, Color = color };
+    }
+
+    private async Task AutoRefreshAsync(System.Threading.CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), token).ContinueWith(_ => { });
+                if (token.IsCancellationRequested) break;
+                await LoadAsync();
+            }
+            catch (TaskCanceledException) { break; }
+            catch { }
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private class DonutSegment { public string Path { get; set; } = string.Empty; public string Color { get; set; } = "#ccc"; }
+}
