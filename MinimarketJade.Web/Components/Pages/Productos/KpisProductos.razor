@@ -1,0 +1,374 @@
+@using MinimarketJade.Web.Data
+@using MinimarketJade.Web.Data.Entities
+@using Microsoft.EntityFrameworkCore
+@using MinimarketJade.Web.Services.Auth
+@using System.Linq
+@inject AppDbContext Db
+@inject AuthService Auth
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+@if (!Auth.IsAdministrador)
+{
+    <div class="container mt-3">
+        <div class="alert alert-danger">No tiene permisos para acceder a este módulo.</div>
+    </div>
+}
+else
+{
+    <style>
+        :root {
+            --kpi-venta: #2563eb;
+            --kpi-stock: #ef4444;
+            --kpi-baja: #f59e0b;
+            --kpi-track: #e5e7eb;
+            --kpi-text: #0f172a;
+        }
+
+        .kpi-title-plain {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .kpi-title {
+            font-size: 0.95rem;
+            color: #475569;
+        }
+
+        .kpi-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: #fff;
+            padding: 0.9rem;
+            min-height: 330px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kpi-chart-wrap {
+            position: relative;
+            height: 180px;
+            width: 100%;
+        }
+
+        .kpi-divider {
+            height: 1px;
+            background: #eef2f6;
+            margin: 0.85rem 0 1rem 0;
+        }
+
+        .kpi-note {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.25rem;
+        }
+
+        .kpi-table {
+            font-size: 0.82rem;
+        }
+
+        .kpi-table th {
+            white-space: nowrap;
+        }
+
+        @@media (max-width: 1200px) {
+            .kpi-card {
+                min-height: auto;
+            }
+        }
+    </style>
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-4">
+                    <div class="kpi-card">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h6 class="kpi-title-plain">Más vendidos</h6>
+                        </div>
+                        <div class="kpi-note">Top 3 por unidades.</div>
+
+                        @if (loadingVentas)
+                        {
+                            <div class="alert alert-info mt-2">Calculando KPI 1...</div>
+                        }
+                        else if (kpi1Top.Count == 0)
+                        {
+                            <div class="alert alert-warning mt-2">No hay datos de ventas para KPI 1.</div>
+                        }
+                        else
+                        {
+                            <div class="kpi-divider"></div>
+                            <div class="kpi-chart-wrap">
+                                <canvas id="kpi1Chart"></canvas>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+        <div class="col-12 col-xl-4">
+                    <div class="kpi-card">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h6 class="kpi-title-plain">Stock crítico</h6>
+                        </div>
+                        <div class="kpi-note">Críticos vs no críticos.</div>
+
+                        @if (loadingStock)
+                        {
+                            <div class="alert alert-info mt-2">Calculando KPI 2...</div>
+                        }
+                        else if (totalActivos == 0)
+                        {
+                            <div class="alert alert-warning mt-2">No hay productos activos para KPI 2.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex gap-2 flex-wrap mb-2">
+                                <span class="badge bg-danger-subtle text-danger border">
+                                    <span class="fw-bold">@kpi2Criticos.Count</span> críticos
+                                </span>
+                                <span class="badge bg-success-subtle text-success border">
+                                    <span class="fw-bold">@Math.Max(0, totalActivos - kpi2Criticos.Count)</span> no críticos
+                                </span>
+                            </div>
+
+                            <div class="kpi-divider"></div>
+                            <div class="kpi-chart-wrap">
+                                <canvas id="kpi2Chart"></canvas>
+                            </div>
+
+                            @if (kpi2Criticos.Any())
+                            {
+                                <div class="kpi-note mt-2">
+                                    <strong>Top críticos:</strong>
+                                    @string.Join(", ", kpi2Criticos.Take(3).Select(x => $"{x.Nombre} ({x.StockActual}/{x.StockMinimo})"))
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+        <div class="col-12 col-xl-4">
+                    <div class="kpi-card">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h6 class="kpi-title-plain">Menos vendidos</h6>
+                        </div>
+                        <div class="kpi-note">Top 5 con datos clave.</div>
+
+                        @if (loadingMenosVendidos)
+                        {
+                            <div class="alert alert-info mt-2">Calculando KPI 5...</div>
+                        }
+                        else if (kpi5Bottom.Count == 0)
+                        {
+                            <div class="alert alert-warning mt-2">No hay datos para KPI 5.</div>
+                        }
+                        else
+                        {
+                            <div class="kpi-divider"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped align-middle kpi-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Producto</th>
+                                            <th class="text-end">Unid.</th>
+                                            <th class="text-end">% Participación</th>
+                                            <th class="text-center">Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (int i = 0; i < kpi5Bottom.Count; i++)
+                                        {
+                                            var item = kpi5Bottom[i];
+                                            <tr>
+                                                <td>@(i + 1)</td>
+                                                <td>@item.Nombre</td>
+                                                <td class="text-end">@item.TotalVendido</td>
+                                                <td class="text-end">@item.ParticipacionPct.ToString("N1")%</td>
+                                                <td class="text-center">
+                                                    @if (item.StockActual <= item.StockMinimo)
+                                                    {
+                                                        <span class="badge bg-danger-subtle text-danger border">Crítico</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-success-subtle text-success border">OK</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool loadingVentas = true;
+    private bool loadingStock = true;
+    private bool loadingMenosVendidos = true;
+
+    private int maxVentas = 0;
+    private int totalActivos = 0;
+
+    private List<RankItem> kpi1Top = new();
+    private List<BottomItem> kpi5Bottom = new();
+    private List<StockItem> kpi2Criticos = new();
+
+    private Microsoft.JSInterop.IJSObjectReference? _jsModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Nota: en productos usamos "solo activos" (Producto.activo = 1).
+        await CalcularKpisAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Importa el módulo JS y renderiza los gráficos con Chart.js.
+        _jsModule = await JS.InvokeAsync<Microsoft.JSInterop.IJSObjectReference>(
+            "import", "./Components/Pages/Productos/KpisProductos.razor.js");
+
+        // Si aún está calculando (por cambios futuros), evitamos render prematuro.
+        if (loadingVentas || loadingStock || loadingMenosVendidos) return;
+
+        await _jsModule.InvokeVoidAsync("renderKpisProductos", new
+        {
+            kpi1 = new
+            {
+                labels = kpi1Top.Select(x => x.Nombre).ToArray(),
+                values = kpi1Top.Select(x => x.TotalVendido).ToArray()
+            },
+            kpi2 = new
+            {
+                totalActivos,
+                totalCriticos = kpi2Criticos.Count,
+                labels = kpi2Criticos.Select(x => x.Nombre).ToArray(),
+                values = kpi2Criticos.Select(x => x.StockActual).ToArray(),
+                minValues = kpi2Criticos.Select(x => x.StockMinimo).ToArray()
+            },
+            kpi5 = new
+            {
+                labels = kpi5Bottom.Select(x => x.Nombre).ToArray(),
+                values = kpi5Bottom.Select(x => x.TotalVendido).ToArray()
+            }
+        });
+    }
+
+    private async Task CalcularKpisAsync()
+    {
+        loadingVentas = loadingStock = loadingMenosVendidos = true;
+
+        var productosActivos = await Db.Productos
+            .Where(p => p.Activo)
+            .Select(p => new
+            {
+                p.IdProducto,
+                p.Nombre,
+                p.StockActual,
+                p.StockMinimo
+            })
+            .ToListAsync();
+
+        var idsActivos = productosActivos.Select(p => p.IdProducto).ToList();
+
+        // Ventas totales por producto (solo ventas no anuladas).
+        var ventasTotales = await (from dv in Db.DetalleVenta
+                                    join v in Db.Venta on dv.IdVenta equals v.IdVenta
+                                    where !v.Anulada && idsActivos.Contains(dv.IdProducto)
+                                    group dv by dv.IdProducto
+                                    into g
+                                    select new
+                                    {
+                                        IdProducto = g.Key,
+                                        TotalVendido = g.Sum(x => x.Cantidad)
+                                    }).ToListAsync();
+
+        var dictVentas = ventasTotales.ToDictionary(x => x.IdProducto, x => x.TotalVendido);
+
+        var productosConVentas = productosActivos
+            .Select(p => new
+            {
+                p.IdProducto,
+                p.Nombre,
+                TotalVendido = dictVentas.TryGetValue(p.IdProducto, out var t) ? t : 0,
+                p.StockActual,
+                p.StockMinimo
+            })
+            .ToList();
+
+        totalActivos = productosConVentas.Count;
+        maxVentas = productosConVentas.Any() ? productosConVentas.Max(x => x.TotalVendido) : 0;
+
+        // KPI 1: top 3 más vendidos.
+        kpi1Top = productosConVentas
+            .OrderByDescending(x => x.TotalVendido)
+            .Take(3)
+            .Select(x => new RankItem { Nombre = x.Nombre, TotalVendido = x.TotalVendido })
+            .ToList();
+
+        var totalVendidoGeneral = productosConVentas.Sum(x => x.TotalVendido);
+
+        // KPI 5: bottom 5 menos vendidos con ventas > 0.
+        kpi5Bottom = productosConVentas
+            .Where(x => x.TotalVendido > 0)
+            .OrderBy(x => x.TotalVendido)
+            .Take(5)
+            .Select(x => new BottomItem
+            {
+                Nombre = x.Nombre,
+                TotalVendido = x.TotalVendido,
+                StockActual = x.StockActual,
+                StockMinimo = x.StockMinimo,
+                ParticipacionPct = totalVendidoGeneral > 0
+                    ? (x.TotalVendido * 100m) / totalVendidoGeneral
+                    : 0m
+            })
+            .ToList();
+
+        // KPI 2: productos con stock crítico.
+        kpi2Criticos = productosConVentas
+            .Where(x => x.StockActual <= x.StockMinimo)
+            .Select(x => new StockItem
+            {
+                Nombre = x.Nombre,
+                StockActual = x.StockActual,
+                StockMinimo = x.StockMinimo
+            })
+            .OrderBy(x => x.StockActual)
+            .ToList();
+
+        // Pequeños flags de carga (para reflejar secciones).
+        loadingVentas = false;
+        loadingMenosVendidos = false;
+        loadingStock = false;
+    }
+
+    private sealed class RankItem
+    {
+        public string Nombre { get; set; } = string.Empty;
+        public int TotalVendido { get; set; }
+    }
+
+    private sealed class StockItem
+    {
+        public string Nombre { get; set; } = string.Empty;
+        public int StockActual { get; set; }
+        public int StockMinimo { get; set; }
+    }
+
+    private sealed class BottomItem
+    {
+        public string Nombre { get; set; } = string.Empty;
+        public int TotalVendido { get; set; }
+        public int StockActual { get; set; }
+        public int StockMinimo { get; set; }
+        public decimal ParticipacionPct { get; set; }
+    }
+}
+

@@ -1,6 +1,7 @@
 @page "/reportes"
 @rendermode InteractiveServer
 @using MinimarketJade.Web.Services.Auth
+@using MinimarketJade.Web.Components.Pages.Productos
 @inject AuthService Auth
 
 <PageTitle>Reportes - Minimarket Jade</PageTitle>
@@ -13,6 +14,18 @@
 }
 else
 {
-    <h2>Reportes y KPI</h2>
-    <p>Indicadores, ventas y stock crítico.</p>
+    <style>
+        .reportes-wrap {
+            max-width: 1400px;
+        }
+    </style>
+
+    <div class="container-fluid mt-3 px-3 reportes-wrap">
+        <div class="mb-3">
+            <h2 class="mb-1">Reportes y KPI</h2>
+            <p class="text-muted mb-0">Panel de KPIs del módulo de Productos.</p>
+        </div>
+
+            <KpisProductos />
+    </div>
 }
