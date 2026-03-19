@@ -25,6 +25,7 @@ public partial class Index : ComponentBase
     private bool mostrarDetalle = false;
     private bool esEdicion = false;
     private string? error;
+    private bool autorizarVentaConPerdida = false;
 
     // Tabla Principal
     private string busqueda = "";
@@ -83,8 +84,9 @@ public partial class Index : ComponentBase
     private void AbrirModal()
     {
         error = null;
+        autorizarVentaConPerdida = false;
         esEdicion = false;
-        producto = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 5, CodigoBarras = "", IdCategoria = 1 };
+        producto = new Producto { Activo = true, UnidadMedida = "Unidad", StockMinimo = 5, CodigoBarras = "", IdCategoria = 0 };
         mostrarModal = true;
     }
 
@@ -97,6 +99,7 @@ public partial class Index : ComponentBase
     private void EditarProducto(Producto p)
     {
         error = null;
+        autorizarVentaConPerdida = false;
         esEdicion = true;
         producto = new Producto
         {
@@ -129,8 +132,14 @@ public partial class Index : ComponentBase
         if (string.IsNullOrWhiteSpace(producto.CodigoBarras)) { error = "⚠ El código de barras es obligatorio. Usa 'Generar'."; return; }
         if (producto.PrecioCompra <= 0) { error = "⚠ El precio de compra debe ser mayor a 0."; return; }
         if (producto.PrecioVenta <= 0) { error = "⚠ El precio de venta debe ser mayor a 0."; return; }
+        if (producto.PrecioVenta < producto.PrecioCompra && !autorizarVentaConPerdida)
+        {
+            error = "⚠ El precio de venta no puede ser menor al de compra. Si es una liquidación o promoción, marque 'Autorizar venta con pérdida'.";
+            return;
+        }
         if (producto.StockActual < 0) { error = "⚠ El stock no puede ser negativo."; return; }
-        if (producto.IdCategoria <= 0) { error = "⚠ Debes seleccionar una categoría válida."; return; }
+        if (producto.StockActual == 0 && !esEdicion) { error = "⚠ El stock inicial debe ser mayor a 0."; return; }
+        if (producto.IdCategoria <= 0) { error = "⚠ Debes seleccionar una categoría."; return; }
 
         try
         {
@@ -159,11 +168,8 @@ public partial class Index : ComponentBase
                 idUsuario: AuthService.CurrentUser!.IdUsuario,
                 motivo: $"Registro del producto en el sistema: {producto.Nombre}"
             );
-        
         }
-
     }
-
     private async Task InhabilitarProducto(Producto p)
     {
         await ProductoService.InhabilitarAsync(p.IdProducto);

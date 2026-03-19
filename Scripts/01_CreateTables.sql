@@ -47,6 +47,7 @@ BEGIN
         telefono             NVARCHAR(20)   NULL,
         email                NVARCHAR(100)  NULL,
         direccion            NVARCHAR(300)  NULL,
+        activo               BIT             NOT NULL DEFAULT 1,
         CONSTRAINT PK_Cliente PRIMARY KEY (id_cliente),
         CONSTRAINT UQ_Cliente_documento UNIQUE (documento_identidad)
     );
@@ -63,6 +64,7 @@ BEGIN
         email           NVARCHAR(100)   NULL,
         direccion       NVARCHAR(300)   NULL,
         contacto        NVARCHAR(100)   NULL,
+        activo          BIT             NOT NULL DEFAULT 1,
         CONSTRAINT PK_Proveedor PRIMARY KEY (id_proveedor),
         CONSTRAINT UQ_Proveedor_nit_ruc UNIQUE (nit_ruc)
     );

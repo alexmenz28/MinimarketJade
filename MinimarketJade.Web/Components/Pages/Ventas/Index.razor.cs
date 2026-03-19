@@ -63,10 +63,11 @@ public partial class Index : ComponentBase
              notas.Any(n => n.IdVenta == v.IdVenta && n.NumeroTicket.Contains(busquedaVenta, StringComparison.OrdinalIgnoreCase))));
 
     private IEnumerable<Cliente> ClientesFiltrados =>
-        clientes.Where(c => string.IsNullOrWhiteSpace(filtroCliente) ||
-        c.NombreCompleto.Contains(filtroCliente, StringComparison.OrdinalIgnoreCase) ||
-        c.DocumentoIdentidad.Contains(filtroCliente));
-
+        clientes.Where(c => c.Activo && ( 
+            string.IsNullOrWhiteSpace(filtroCliente) ||
+            c.NombreCompleto.Contains(filtroCliente, StringComparison.OrdinalIgnoreCase) ||
+            c.DocumentoIdentidad.Contains(filtroCliente)
+        ));
 
 
     protected override async Task OnInitializedAsync() => await CargarDatos();
@@ -85,7 +86,6 @@ public partial class Index : ComponentBase
         fechaHasta = null;
         busquedaVenta = "";
     }
-
     //Inicializar Venta
     private void AbrirModal()
     {

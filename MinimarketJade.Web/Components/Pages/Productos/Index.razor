@@ -20,9 +20,12 @@
                        placeholder="Buscar nombre o codigo..."
                        @bind="busqueda" @bind:event="oninput" />
             </div>
-            <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirModal">
-                <i class="bi bi-plus-circle-fill me-2 text-success"></i>Nuevo Producto
-            </button>
+            @if (AuthService.IsAdministrador)
+            {
+                <button class="btn btn-light shadow-sm fw-bold px-4 rounded-pill d-flex align-items-center" @onclick="AbrirModal">
+                    <i class="bi bi-plus-circle-fill me-2 text-success"></i>Nuevo Producto
+                </button>
+            }
         </div>
     </div>
 
@@ -152,20 +155,23 @@
                                     <button class="btn btn-outline-info btn-sm rounded-pill px-3 me-1" @onclick="() => VerDetalle(p)">
                                         <i class="bi bi-eye me-1"></i>Ver
                                     </button>
-                                    <button class="btn btn-outline-warning btn-sm rounded-pill px-3 me-1" @onclick="() => EditarProducto(p)">
-                                        <i class="bi bi-pencil me-1"></i>Editar
-                                    </button>
-                                    @if (p.Activo)
+                                    @if (AuthService.IsAdministrador)
                                     {
-                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" @onclick="() => InhabilitarProducto(p)">
-                                            <i class="bi bi-slash-circle me-1"></i>Inhabilitar
+                                        <button class="btn btn-outline-warning btn-sm rounded-pill px-3 me-1" @onclick="() => EditarProducto(p)">
+                                            <i class="bi bi-pencil me-1"></i>Editar
                                         </button>
-                                    }
-                                    else
-                                    {
-                                        <button class="btn btn-outline-success btn-sm rounded-pill px-3" @onclick="() => HabilitarProducto(p)">
-                                            <i class="bi bi-check-circle me-1"></i>Habilitar
-                                        </button>
+                                        @if (p.Activo)
+                                        {
+                                            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" @onclick="() => InhabilitarProducto(p)">
+                                                <i class="bi bi-slash-circle me-1"></i>Inhabilitar
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-outline-success btn-sm rounded-pill px-3" @onclick="() => HabilitarProducto(p)">
+                                                <i class="bi bi-check-circle me-1"></i>Habilitar
+                                            </button>
+                                        }
                                     }
                                 </td>
                             </tr>
@@ -217,6 +223,7 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Nombre del Producto</label>
                                 <InputText class="form-control shadow-sm" @bind-Value="producto.Nombre" />
+                                <ValidationMessage class="text-danger small" For="@(() => producto.Nombre)" />
                                 <label class="form-label fw-bold mt-2">Categoría</label>
                                 <InputSelect class="form-select shadow-sm" @bind-Value="producto.IdCategoria">
                                     <option value="0">Seleccione una categoría...</option>
@@ -242,6 +249,16 @@
                                 <InputNumber class="form-control shadow-sm" @bind-Value="producto.PrecioVenta" />
                             </div>
                         </div>
+
+                        @if (producto.PrecioCompra > 0 && producto.PrecioVenta < producto.PrecioCompra)
+                        {
+                            <div class="alert alert-warning py-2 mb-3 rounded-3 d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-2" id="chkAutorizarPerdida" @bind="autorizarVentaConPerdida" />
+                                <label class="form-check-label mb-0 small" for="chkAutorizarPerdida">
+                                    Autorizar venta con pérdida (liquidación, promoción, producto dañado, etc.)
+                                </label>
+                            </div>
+                        }
 
                         <div class="row">
                             <div class="col-md-6 mb-3">

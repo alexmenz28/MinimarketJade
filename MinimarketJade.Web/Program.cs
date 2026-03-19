@@ -1,14 +1,19 @@
+using ApexCharts;
+using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Components;
 using MinimarketJade.Web.Data;
 using MinimarketJade.Web.Data.Entities;
-using Microsoft.EntityFrameworkCore;
+using MinimarketJade.Web.Services;
 using MinimarketJade.Web.Services.Auth;
 using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Clientes;
+using MinimarketJade.Web.Services.Compras;
 using MinimarketJade.Web.Services.Productos;
 using MinimarketJade.Web.Services.Proveedores;
-using MinimarketJade.Web.Services.Compras;
-using MinimarketJade.Web.Services;
+using MinimarketJade.Web.Services.Reportes;
+
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +31,9 @@ builder.Services.AddScoped<IVentaService, VentaService>();
 builder.Services.AddScoped<INotaVentaService, NotaVentaService>();
 builder.Services.AddScoped<IMovInventarioService, MovInventarioService>();
 builder.Services.AddScoped<ICompraService, CompraService>();
+builder.Services.AddScoped<IReporteService, ReporteService>();
+builder.Services.AddApexCharts();
+
 
 // Autenticación en memoria (login/logout): estado del usuario actual.
 builder.Services.AddSingleton<AuthService>();
