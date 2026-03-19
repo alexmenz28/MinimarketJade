@@ -106,3 +106,17 @@ h1:focus {
     border-top: 1px solid rgba(255,255,255,0.03);
 }
 
+/* Simple bar chart styles for KPI */
+.bar-container {
+    background: #e9ecef;
+    height: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.bar-fill {
+    background: linear-gradient(90deg, #1b6ec2, #2ea3ff);
+    height: 100%;
+}
+.bar-row .fw-bold { font-size: 0.95rem; }
+
+

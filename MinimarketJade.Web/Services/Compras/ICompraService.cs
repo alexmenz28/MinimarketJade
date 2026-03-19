@@ -13,6 +13,8 @@ namespace MinimarketJade.Web.Services.Compras
         Task<List<PrecioPromedioProductoDto>> ObtenerPrecioCompraPromedioPorProductoAsync(int year, int month);
         Task<List<GastoProveedorDto>> ObtenerGastoPorProveedorAsync(DateTime? desde = null, DateTime? hasta = null);
         Task<decimal> ObtenerConcentracionTop3ProveedoresAsync(DateTime? desde = null, DateTime? hasta = null);
+        // Precio estándar por categoría (por ejemplo promedio de precio_compra por categoría)
+        Task<List<CategoriaPrecioDto>> ObtenerPrecioEstandarPorCategoriaAsync();
     }
 }
 
@@ -33,4 +35,11 @@ public class GastoProveedorDto
     public string? RazonSocial { get; set; }
     public decimal TotalGastado { get; set; }
     public decimal Porcentaje { get; set; }
+}
+
+public class CategoriaPrecioDto
+{
+    public int IdCategoria { get; set; }
+    public string? NombreCategoria { get; set; }
+    public decimal PrecioEstandar { get; set; }
 }

@@ -12,69 +12,26 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Precio prom. actual</small>
-                    <div class="h4 mt-2 text-dark">Bs. @PrecioPromedioActual.ToString("0.00")</div>
-                    <div class="small text-muted">Promedio del mes</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Costo estándar (proxy)</small>
-                    <div class="h4 mt-2 text-dark">Bs. @CostoEstandarMeta.ToString("0.00")</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Variación vs. meta</small>
-                    <div class="h4 mt-2 text-dark">@VariacionPercent.ToString("0.#")% </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Productos en alerta</small>
-                    <div class="h4 mt-2 text-dark">@ProductosEnAlertaCount / @ProductosTotal</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="row">
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <div class="small text-muted mb-2">PRECIO COMPRA VS. COSTO ESTÁNDAR POR PRODUCTO</div>
-                    @if (PreciosPorProducto == null)
+                    <div class="small text-muted mb-2">Precio Estándar por Categoría</div>
+                    @if (CategoriasPrecios == null)
                     {
                         <div>Cargando...</div>
                     }
                     else
                     {
-                        <table class="table table-striped">
-                            <thead>
-                                <tr><th>Producto</th><th>Precio Compra</th><th>Costo Estándar</th><th>Estado</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var p in ProductStatuses)
-                                {
-                                    <tr>
-                                        <td>@p.NombreProducto</td>
-                                        <td>Bs. @p.PrecioPromedio.ToString("0.00")</td>
-                                        <td>Bs. @p.CostoEstandar.ToString("0.00")</td>
-                                        <td><span class="badge @GetBadgeClass(p.Status)">@p.Status</span></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <ul class="list-group list-group-flush">
+                            @foreach (var c in CategoriasPrecios)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                    <div class="fw-bold">@c.NombreCategoria</div>
+                                    <div>Bs. @c.PrecioEstandar.ToString("0.00")</div>
+                                </li>
+                            }
+                        </ul>
                     }
                 </div>
             </div>
@@ -83,24 +40,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="small text-muted mb-2">SEMÁFORO DE CONTROL</div>
-                    <ul class="list-unstyled">
-                        <li><span class="badge bg-success">Verde</span> Precio ≤ costo estándar</li>
-                        <li><span class="badge bg-warning">Amarillo</span> 1% - 5% sobre costo</li>
-                        <li><span class="badge bg-danger">Rojo</span> > 5% sobre costo</li>
-                    </ul>
-                    <div class="mt-3">
-                        <div class="small text-muted">ESTADO DEL MES</div>
-                        @if (ProductStatuses != null)
-                        {
-                            @foreach (var p in ProductStatuses.Take(6))
-                            {
-                                <div class="d-flex justify-content-between align-items-center py-1">
-                                    <div>@p.NombreProducto</div>
-                                    <div class="badge @GetBadgeClass(p.Status)">@p.Status</div>
-                                </div>
-                            }
-                        }
-                    </div>
+                    <p class="text-muted">Se muestra únicamente el precio estándar por categoría en esta vista.</p>
                 </div>
             </div>
         </div>
@@ -109,13 +49,7 @@
 </div>
 
 @code {
-    private List<PrecioPromedioProductoDto>? PreciosPorProducto;
-    private List<ProductStatus>? ProductStatuses;
-    private decimal PrecioPromedioActual = 0m;
-    private decimal CostoEstandarMeta = 12.00m; // proxy, puede cambiarse por campo real
-    private decimal VariacionPercent = 0m;
-    private int ProductosEnAlertaCount = 0;
-    private int ProductosTotal = 0;
+    private List<CategoriaPrecioDto>? CategoriasPrecios;
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,48 +58,6 @@
 
     private async Task LoadAsync()
     {
-        var now = DateTime.UtcNow;
-        PreciosPorProducto = await CompraService.ObtenerPrecioCompraPromedioPorProductoAsync(now.Year, now.Month);
-        ProductosTotal = PreciosPorProducto.Count;
-        PrecioPromedioActual = PreciosPorProducto.Any() ? PreciosPorProducto.Average(x => x.PrecioPromedio) : 0m;
-        VariacionPercent = (PrecioPromedioActual - CostoEstandarMeta) / (CostoEstandarMeta == 0 ? 1 : CostoEstandarMeta) * 100m;
-
-        ProductStatuses = PreciosPorProducto.Select(p => {
-            var diff = p.CostoEstandar == 0 ? 0m : (p.PrecioPromedio - p.CostoEstandar) / p.CostoEstandar;
-            string status;
-            if (diff <= 0) status = "Verde";
-            else if (diff <= 0.05m) status = "Amarillo";
-            else status = "Rojo";
-            return new ProductStatus
-            {
-                IdProducto = p.IdProducto,
-                NombreProducto = p.NombreProducto ?? "-",
-                PrecioPromedio = p.PrecioPromedio,
-                CostoEstandar = p.CostoEstandar,
-                Status = status
-            };
-        }).ToList();
-
-        ProductosEnAlertaCount = ProductStatuses.Count(s => s.Status != "Verde");
-    }
-
-    private string GetBadgeClass(string status)
-    {
-        return status switch
-        {
-            "Verde" => "bg-success",
-            "Amarillo" => "bg-warning text-dark",
-            "Rojo" => "bg-danger",
-            _ => "bg-secondary"
-        };
-    }
-
-    private class ProductStatus
-    {
-        public int IdProducto { get; set; }
-        public string NombreProducto { get; set; } = string.Empty;
-        public decimal PrecioPromedio { get; set; }
-        public decimal CostoEstandar { get; set; }
-        public string Status { get; set; } = "Verde";
+        CategoriasPrecios = await CompraService.ObtenerPrecioEstandarPorCategoriaAsync();
     }
 }

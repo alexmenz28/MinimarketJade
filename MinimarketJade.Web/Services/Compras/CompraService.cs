@@ -205,5 +205,22 @@ namespace MinimarketJade.Web.Services.Compras
             if (total == 0) return 0m;
             return top3 / total * 100m; // retorna porcentaje (ej: 60 means 60%)
         }
+
+        public async Task<List<CategoriaPrecioDto>> ObtenerPrecioEstandarPorCategoriaAsync()
+        {
+            // Calcular precio estándar por categoría como el promedio del precio_compra de productos activos en la categoría
+            var query = from p in _context.Productos
+                        join c in _context.Categoria on p.IdCategoria equals c.IdCategoria
+                        where p.Activo
+                        group p by new { c.IdCategoria, c.Nombre } into g
+                        select new CategoriaPrecioDto
+                        {
+                            IdCategoria = g.Key.IdCategoria,
+                            NombreCategoria = g.Key.Nombre,
+                            PrecioEstandar = g.Average(x => x.PrecioCompra)
+                        };
+
+            return await query.OrderBy(x => x.NombreCategoria).ToListAsync();
+        }
     }
 }

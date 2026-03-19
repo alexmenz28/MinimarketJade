@@ -7,107 +7,37 @@
 <div class="container py-3">
     <div class="card mb-3">
         <div class="card-body">
-            <h5 class="card-title">KPI Estratégico 2 — Productividad de Compra por Proveedor</h5>
-            <p class="card-text text-muted">Módulo ERP: Proveedores / Compras · Responsable: Administrador / Dueño · Medición: Trimestral</p>
+            <h5 class="card-title">Participación por Proveedor (60% del Total)</h5>
+            <p class="card-text text-muted">Solo indicador: porcentaje por proveedor con gráfico de barras.</p>
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Total Compras (trimestre)</small>
-                    <div class="h4 mt-2 text-dark">@TotalComprasFormateado</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Concentración Top 3</small>
-                    <div class="h4 mt-2 text-dark">@ConcentracionPercent.ToString("0")% </div>
-                    <small class="text-muted">Meta: ≥ 60%</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">N.º de Proveedores</small>
-                    <div class="h4 mt-2 text-dark">@NumProveedores</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <small class="text-muted">Proveedor Principal</small>
-                    <div class="h5 mt-2 text-dark">@ProveedorPrincipal</div>
-                    <small class="text-muted">@ProveedorPrincipalPercent.ToString("0.#")% del total</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-4">
-        <div class="card">
-            <div class="card-body">
-                <div class="small text-muted">PROGRESO HACIA LA META — TOP 3 PROVEEDORES</div>
-                <div class="progress mt-2" style="height:26px">
-                    <div class="progress-bar bg-primary" role="progressbar" style="width:@ConcentracionPercent%">@ConcentracionPercent.ToString("0.#")%</div>
-                </div>
-                <div class="small text-muted mt-1">Meta: 60%</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <div class="small text-muted mb-2">PARTICIPACIÓN POR PROVEEDOR (% DEL TOTAL)</div>
-                    @if (GastosPorProveedor == null)
-                    {
-                        <div>Cargando...</div>
+    <div class="card">
+        <div class="card-body">
+            @if (GastosPorProveedor == null)
+            {
+                <div>Cargando...</div>
+            }
+            else
+            {
+                <div class="bar-chart">
+                    @{
+                        var top = GastosPorProveedor.OrderByDescending(x => x.Porcentaje).Take(3).ToList();
                     }
-                    else
+                    @foreach (var g in top)
                     {
-                        <ul class="list-group list-group-flush">
-                            @foreach (var g in GastosPorProveedor.Take(10))
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                                    <div>
-                                        <div class="fw-bold">@g.RazonSocial</div>
-                                        <div class="small text-muted">@g.Porcentaje.ToString("0.#")%</div>
-                                    </div>
-                                    <div class="text-end">Bs. @g.TotalGastado.ToString("N0")</div>
-                                </li>
-                            }
-                        </ul>
+                        <div class="bar-row mb-2">
+                            <div class="d-flex justify-content-between">
+                                <div class="fw-bold">@g.RazonSocial</div>
+                                <div class="text-muted">@g.Porcentaje.ToString("0.0")%</div>
+                            </div>
+                            <div class="bar-container mt-1">
+                                <div class="bar-fill" style="width:@g.Porcentaje.ToString("0.##")%"></div>
+                            </div>
+                        </div>
                     }
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="small text-muted mb-2">DISTRIBUCIÓN DEL GASTO</div>
-                    @if (DonutSegments == null || !DonutSegments.Any())
-                    {
-                        <div>Cargando gráfico...</div>
-                    }
-                    else
-                    {
-                        <svg width="260" height="260" viewBox="0 0 42 42">
-                            @foreach (var s in DonutSegments)
-                            {
-                                <path d="@s.Path" fill="none" stroke="@s.Color" stroke-width="4"></path>
-                            }
-                            <circle cx="21" cy="21" r="10" fill="#fff"></circle>
-                        </svg>
-                    }
-                </div>
-            </div>
+            }
         </div>
     </div>
 </div>
@@ -120,6 +50,7 @@
     private int NumProveedores = 0;
     private string ProveedorPrincipal = "-";
     private decimal ProveedorPrincipalPercent = 0m;
+    private List<GastoProveedorDto> Top3Proveedores = new();
 
     private System.Threading.CancellationTokenSource? _cts;
 
@@ -144,6 +75,7 @@
             var top = GastosPorProveedor.First();
             ProveedorPrincipal = top.RazonSocial ?? "-";
             ProveedorPrincipalPercent = top.Porcentaje;
+            Top3Proveedores = GastosPorProveedor.OrderByDescending(x => x.Porcentaje).Take(3).ToList();
         }
 
         DonutSegments.Clear();
