@@ -75,7 +75,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label>TelÈfono</label>
+                            <label>Telùfono</label>
                             <InputText class="form-control" @bind-Value="clienteActual.Telefono" />
                         </div>
 
@@ -85,7 +85,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label>DirecciÛn</label>
+                            <label>Direcciùn</label>
                             <InputText class="form-control" @bind-Value="clienteActual.Direccion" />
                         </div>
 
@@ -150,8 +150,7 @@ else
                         @if (Auth.IsAdministrador)
                         {
                             <button class="btn @(estaDeshabilitado ? "btn-success" : "btn-danger") btn-sm"
-                                    @onclick="() => CambiarEstado(c.IdCliente)"
-                                    @onclick:stopPropagation="true">
+                                    @onclick="() => CambiarEstado(c.IdCliente)">
                                 @(estaDeshabilitado ? "Habilitar" : "Deshabilitar")
                             </button>
                         }

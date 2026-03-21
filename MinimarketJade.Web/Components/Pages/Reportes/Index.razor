@@ -1,8 +1,9 @@
 @page "/reportes"
 @rendermode InteractiveServer
-@using MinimarketJade.Web.Services.Auth
 @using MinimarketJade.Web.Services.Reportes
 @using ApexCharts
+@using MinimarketJade.Web.Components.Pages.Productos
+
 <PageTitle>Reportes - Minimarket Jade</PageTitle>
 
 @if (!Auth.IsAdministrador)
@@ -13,16 +14,15 @@
 }
 else
 {
-    <div class="container-fluid mt-3 px-4">
-        <h2 class="fw-bold">Dashboard</h2>
+    <div class="container mt-3 p">
+        <h2 class="fw-bold mb-3">Dashboard</h2>
         <div class="row g-3">
 
-            @* KPI 1 - Cuotas de ventas *@
             <div class="col-md-5">
-                <div class="card p-3 mb-3">
+                <div class="card p-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold mb-0">Cuotas de ventas</h6>
-                        <span class="text-muted" style="font-size:11px;">Meta diaria: @metaDiaria.ToString("N2") Bs.</span>
+                        <span class="text-muted" style="font-size:11px;">Meta: @metaDiaria.ToString("N2") Bs.</span>
                     </div>
                     <div class="d-flex gap-2 mb-2">
                         <div class="bg-light rounded p-2 flex-fill">
@@ -42,7 +42,7 @@ else
                     </div>
                     @if (opcionesGrafica != null)
                     {
-                        <div style="height: 200px; max-width: 100%; overflow: hidden;">
+                        <div style="height: 200px; max-width: 130%; overflow: hidden;">
                             <ApexChart TItem="IngresosDiarios"
                                        Options="opcionesGrafica"
                                        Height="180">
@@ -59,24 +59,19 @@ else
                     }
                 </div>
             </div>
-            @* KPI 2- Productividad por vendedor *@
-            <div class="col-auto">
-                <div class="card p-3 mb-3" style="cursor:pointer;" @onclick="() => mostrarTodosVendedores = true">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="mb-2">
-                            <h6 class="fw-bold mb-0">Rendimiento del personal</h6>
-                            <span class="text-muted" style="font-size:11px;">Meta semanal: 3.000,00 Bs.</span>
-                        </div>
-                    </div>
 
+            <div class="col-md-3">
+                <div class="card p-3" style="cursor:pointer;" @onclick="() => mostrarTodosVendedores = true">
+                    <div class="mb-2">
+                        <h6 class="fw-bold mb-0">Rendimiento del personal</h6>
+                        <span class="text-muted" style="font-size:11px;">Meta semanal: 3.000,00 Bs.</span>
+                    </div>
                     @if (vendedores.Any())
                     {
-                        <div class="d-flex gap-3 mt-2">
-
-                            @* Mejor vendedor *@
+                        <div class="d-flex justify-content-around mt-2">
                             <div class="text-center">
-                                <div class="text-muted mb-1" style="font-size:11px;">Mejor vendedor</div>
-                                <svg viewBox="0 0 36 36" style="width:80px;height:80px;">
+                                <div class="text-muted mb-1" style="font-size:11px;">Mejor</div>
+                                <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
                                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                           fill="none" stroke="#eee" stroke-width="3" />
                                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -87,14 +82,12 @@ else
                                         @vendedores.First().Porcentaje.ToString("N0")%
                                     </text>
                                 </svg>
-                                <div style="font-size:12px;" class="fw-bold">@vendedores.First().NombreVendedor</div>
-                                <div style="font-size:11px;" class="text-muted">@vendedores.First().TotalVentas.ToString("N2") Bs.</div>
+                                <div style="font-size:11px;" class="fw-bold">@vendedores.First().NombreVendedor</div>
+                                <div style="font-size:10px;" class="text-muted">@vendedores.First().TotalVentas.ToString("N2") Bs.</div>
                             </div>
-
-                            @* Menor vendedor *@
                             <div class="text-center">
-                                <div class="text-muted mb-1" style="font-size:11px;">Menor vendedor</div>
-                                <svg viewBox="0 0 36 36" style="width:80px;height:80px;">
+                                <div class="text-muted mb-1" style="font-size:11px;">Menor</div>
+                                <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
                                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                           fill="none" stroke="#eee" stroke-width="3" />
                                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -107,10 +100,9 @@ else
                                         @vendedores.Last().Porcentaje.ToString("N0")%
                                     </text>
                                 </svg>
-                                <div style="font-size:12px;" class="fw-bold">@vendedores.Last().NombreVendedor</div>
-                                <div style="font-size:11px;" class="text-muted">@vendedores.Last().TotalVentas.ToString("N2") Bs.</div>
+                                <div style="font-size:11px;" class="fw-bold">@vendedores.Last().NombreVendedor</div>
+                                <div style="font-size:10px;" class="text-muted">@vendedores.Last().TotalVentas.ToString("N2") Bs.</div>
                             </div>
-
                         </div>
                     }
                     else
@@ -120,10 +112,13 @@ else
                 </div>
             </div>
 
+            <div class="col-md-4">
+                <KpisProductos />
+            </div>
+
         </div>
     </div>
 
-    @* Modal todos los vendedores *@
     @if (mostrarTodosVendedores)
     {
         <div class="modal fade show d-block modal-blur" tabindex="-1">

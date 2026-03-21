@@ -3,7 +3,6 @@ using MinimarketJade.Web.Services.Auth;
 using MinimarketJade.Web.Services.Reportes;
 using ApexCharts;
 
-
 namespace MinimarketJade.Web.Components.Pages.Reportes;
 
 public partial class Index : ComponentBase
@@ -17,15 +16,14 @@ public partial class Index : ComponentBase
     private decimal totalAyer;
     private decimal cumplimientoHoy;
     private decimal variacion;
-
     private List<VendedorProductividad> vendedores = new();
     private bool mostrarTodosVendedores = false;
-
     private ApexChartOptions<IngresosDiarios>? opcionesGrafica;
 
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsAdministrador) return;
+
         opcionesGrafica = new ApexChartOptions<IngresosDiarios>
         {
             Chart = new Chart
@@ -37,19 +35,19 @@ public partial class Index : ComponentBase
             Annotations = new Annotations
             {
                 Yaxis = new List<AnnotationsYAxis>
-        {
-            new AnnotationsYAxis
-            {
-                Y = (double)metaDiaria,
-                BorderColor = "#FF0000",
-                BorderWidth = 3,
-                Label = new Label
                 {
-                    Text = "Meta",
-                    Style = new Style { Color = "#FF0000" }
+                    new AnnotationsYAxis
+                    {
+                        Y = (double)metaDiaria,
+                        BorderColor = "#FF0000",
+                        BorderWidth = 3,
+                        Label = new Label
+                        {
+                            Text = "Meta",
+                            Style = new Style { Color = "#FF0000" }
+                        }
+                    }
                 }
-            }
-        }
             }
         };
 
@@ -57,14 +55,17 @@ public partial class Index : ComponentBase
 
         totalHoy = ingresosDiarios
             .FirstOrDefault(i => i.Fecha.Date == DateTime.Today)?.Total ?? 0;
-
         totalAyer = ingresosDiarios
             .FirstOrDefault(i => i.Fecha.Date == DateTime.Today.AddDays(-1))?.Total ?? 0;
-
         cumplimientoHoy = metaDiaria > 0 ? (totalHoy / metaDiaria * 100) : 0;
-
         variacion = totalAyer > 0 ? ((totalHoy - totalAyer) / totalAyer * 100) : 0;
-        vendedores = await ReporteService.GetProductividadVendedoresAsync(); 
 
+        vendedores = await ReporteService.GetProductividadVendedoresAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await InvokeAsync(StateHasChanged);
     }
 }

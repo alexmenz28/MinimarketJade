@@ -19,7 +19,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Base de datos (SQL Server)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
+
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // Servicios de aplicación
@@ -34,6 +35,7 @@ builder.Services.AddScoped<ICompraService, CompraService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddApexCharts();
 
+builder.Services.AddScoped<ICompraService, CompraService>();
 
 // Autenticación en memoria (login/logout): estado del usuario actual.
 builder.Services.AddSingleton<AuthService>();
