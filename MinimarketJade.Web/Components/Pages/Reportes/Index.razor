@@ -1,23 +1,158 @@
 @page "/reportes"
 @rendermode InteractiveServer
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Compras
+@using ApexCharts
+
 <PageTitle>Reportes - Minimarket Jade</PageTitle>
+<h2 class="fw-bold mb-1">Reportes y KPI</h2>
+<p class="text-muted small mb-3">Compras y Proveedores</p>
 
-<h2>Reportes y KPI</h2>
-<p>Indicadores, ventas y stock crítico.</p>
+<div class="row g-3">
 
-<div class="row mt-4">
-    <div class="col-md-6 mb-3">
-        <div class="card dashboard-card p-3">
-            <h5>KPI 1 — Precio de Compra Promedio por Producto</h5>
-            <p class="text-muted">Módulo: Productos / Compras · Medición: Mensual</p>
-            <NavLink class="btn btn-primary" href="/reportes/kpi-precio-promedio">Abrir KPI 1</NavLink>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="fw-bold mb-0">Variación de Precio por Categoría</h6>
+            <p class="text-muted" style="font-size:11px;">Meta: variación máx 5% mensual</p>
+            @if (PreciosCategoria == null)
+            {
+                <div class="text-muted small">Cargando...</div>
+            }
+            else if (!PreciosCategoria.Any())
+            {
+                <div class="alert alert-warning small py-1">Sin datos.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0" style="font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th>Categoría</th>
+                            <th class="text-center">Variación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in PreciosCategoria)
+                        {
+                            var variacion = c.PrecioEstandar > 0
+                            ? ((c.PrecioPromedio - c.PrecioEstandar) / c.PrecioEstandar * 100)
+                            : 0;
+                            var colorBadge = variacion > 5 ? "bg-danger"
+                            : variacion > 0 ? "bg-warning text-dark"
+                            : "bg-success";
+                            <tr style="cursor:pointer;" @onclick="() => AbrirDetalle(c)">
+                                <td>@c.NombreCategoria</td>
+                                <td class="text-center">
+                                    <span class="badge @colorBadge" style="font-size:10px;">
+                                        @(variacion >= 0 ? "+" : "")@variacion.ToString("0.0")%
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         </div>
     </div>
-    <div class="col-md-6 mb-3">
-        <div class="card dashboard-card p-3">
-            <h5>KPI 2 — Productividad de Compra por Proveedor</h5>
-            <p class="text-muted">Módulo: Proveedores / Compras · Medición: Trimestral</p>
-            <NavLink class="btn btn-primary" href="/reportes/kpi-productividad">Abrir KPI 2</NavLink>
+
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="fw-bold mb-0">Concentración de Gasto por Proveedor</h6>
+            <p class="text-muted" style="font-size:11px;">Meta: ningún proveedor > 40% · Últimos 3 meses</p>
+            @if (GastosPorProveedor == null)
+            {
+                <div class="text-muted small">Cargando...</div>
+            }
+            else if (!GastosPorProveedor.Any())
+            {
+                <div class="alert alert-warning small py-1">Sin datos.</div>
+            }
+            else if (opcionesTorta != null)
+            {
+                <div style="height:250px; overflow:hidden;">
+                    <ApexChart TItem="GastoProveedorDto"
+                               Options="opcionesTorta"
+                               Height="230"
+                               OnDataPointSelection="MostrarTotal">
+                        <ApexPointSeries TItem="GastoProveedorDto"
+                                         Items="GastosPorProveedor"
+                                         Name="% Concentración"
+                                         SeriesType="SeriesType.Pie"
+                                         XValue="@(g => g.RazonSocial)"
+                                         YValue="@(g => g.Porcentaje)" />
+                    </ApexChart>
+                </div>
+                @if (!string.IsNullOrEmpty(totalSeleccionado))
+                {
+                    <div class="text-center mt-2 small fw-bold text-muted">@totalSeleccionado</div>
+                }
+            }
         </div>
     </div>
+
 </div>
+
+@if (mostrarDetalle && categoriaDetalle != null)
+{
+    <div class="modal fade show d-block modal-blur" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">@categoriaDetalle.NombreCategoria — Detalle de variación</h5>
+                    <button type="button" class="btn-close" @onclick="() => mostrarDetalle = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Precio promedio: <strong>Bs. @categoriaDetalle.PrecioPromedio.ToString("0.00")</strong> ·
+                        Precio estándar: <strong>Bs. @categoriaDetalle.PrecioEstandar.ToString("0.00")</strong>
+                    </p>
+                    @if (ProductosDetalle == null)
+                    {
+                        <div class="text-muted small">Cargando productos...</div>
+                    }
+                    else if (!ProductosDetalle.Any())
+                    {
+                        <div class="alert alert-warning small py-1">Sin productos con compras este mes.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm table-striped mb-0" style="font-size:12px;">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-end">Precio Promedio Compra</th>
+                                    <th class="text-end">Precio Estándar</th>
+                                    <th class="text-center">Variación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in ProductosDetalle)
+                                {
+                                    var v = p.CostoEstandar > 0
+                                    ? ((p.PrecioPromedio - p.CostoEstandar) / p.CostoEstandar * 100)
+                                    : 0;
+                                    var color = v > 5 ? "bg-danger"
+                                    : v > 0 ? "bg-warning text-dark"
+                                    : "bg-success";
+                                    <tr>
+                                        <td>@p.NombreProducto</td>
+                                        <td class="text-end">Bs. @p.PrecioPromedio.ToString("0.00")</td>
+                                        <td class="text-end">Bs. @p.CostoEstandar.ToString("0.00")</td>
+                                        <td class="text-center">
+                                            <span class="badge @color" style="font-size:10px;">
+                                                @(v >= 0 ? "+" : "")@v.ToString("0.0")%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="modal-footer border-0">
+                    <button class="btn btn-secondary rounded-pill w-100" @onclick="() => mostrarDetalle = false">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,11 +1,12 @@
+using ApexCharts;
+using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Components;
 using MinimarketJade.Web.Data;
 using MinimarketJade.Web.Services;
-using Microsoft.EntityFrameworkCore;
 using MinimarketJade.Web.Services.Categorias;
 using MinimarketJade.Web.Services.Clientes;
-using MinimarketJade.Web.Services.Proveedores;
 using MinimarketJade.Web.Services.Compras;
+using MinimarketJade.Web.Services.Proveedores;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,7 @@ builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IProveedorService, ProveedorService>();
 builder.Services.AddScoped<ICompraService, CompraService>();
+builder.Services.AddApexCharts();
 
 // Blazor
 builder.Services.AddRazorComponents()
