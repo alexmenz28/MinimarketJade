@@ -1,8 +1,11 @@
 @page "/reportes"
 @rendermode InteractiveServer
 @using MinimarketJade.Web.Services.Reportes
-@using ApexCharts
+@using MinimarketJade.Web.Services.Auth
+@using MinimarketJade.Web.Data.Entities
+@using MinimarketJade.Web.Services.Compras
 @using MinimarketJade.Web.Components.Pages.Productos
+@using ApexCharts
 
 <PageTitle>Reportes - Minimarket Jade</PageTitle>
 
@@ -14,17 +17,23 @@
 }
 else
 {
-    <div class="container mt-3 p">
-        <h2 class="fw-bold mb-3">Dashboard</h2>
+    <div class="container-fluid mt-3 px-4">
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <div>
+                <h2 class="fw-bold mb-0">Reportes y Dashboard</h2>
+            </div>
+        </div>
+
         <div class="row g-3">
 
-            <div class="col-md-5">
-                <div class="card p-3">
+            <div class="col-md-5 d-flex flex-column gap-3">
+
+                <div class="card p-3 shadow-sm border-0">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold mb-0">Cuotas de ventas</h6>
                         <span class="text-muted" style="font-size:11px;">Meta: @metaDiaria.ToString("N2") Bs.</span>
                     </div>
-                    <div class="d-flex gap-2 mb-2">
+                    <div class="d-flex gap-2 mb-3">
                         <div class="bg-light rounded p-2 flex-fill">
                             <div class="text-muted" style="font-size:11px;">Hoy</div>
                             <div class="fw-bold" style="font-size:18px;">@totalHoy.ToString("N2") Bs.</div>
@@ -40,69 +49,76 @@ else
                             <span class="text-muted" style="font-size:11px;">@(variacion >= 0 ? "Subió" : "Bajó")</span>
                         </div>
                     </div>
-                    @if (opcionesGrafica != null)
+                    @if (opcionesGrafica != null && ingresosDiarios != null)
                     {
-                        <div style="height: 200px; max-width: 130%; overflow: hidden;">
-                            <ApexChart TItem="IngresosDiarios"
-                                       Options="opcionesGrafica"
-                                       Height="180">
-                                <ApexPointSeries TItem="IngresosDiarios"
-                                                 Items="ingresosDiarios"
-                                                 Name="Ingresos"
-                                                 SeriesType="SeriesType.Line"
-                                                 XValue="@(i => i.Fecha.ToString("dd/MM"))"
-                                                 YValue="@(i => i.Total)"
-                                                 Color="#1D9E75"
+                        <div style="height: 200px; width: 100%; overflow: hidden;">
+                            <ApexChart TItem="IngresosDiarios" Options="opcionesGrafica" Height="180">
+                                <ApexPointSeries TItem="IngresosDiarios" Items="ingresosDiarios" Name="Ingresos"
+                                                 SeriesType="SeriesType.Line" XValue="@(i => i.Fecha.ToString("dd/MM"))"
+                                                 YValue="@(i => i.Total)" Color="#1D9E75"
                                                  Stroke="@(new SeriesStroke { Width = 4, Color = "#1D9E75" })" />
                             </ApexChart>
                         </div>
                     }
                 </div>
+
+                <div class="card p-3 shadow-sm border-0">
+                    <h6 class="fw-bold mb-0" style="font-size:13px;">Clientes Recurrentes</h6>
+                    <span class="text-muted mb-2 d-block" style="font-size:10px;">Meta mensual: 40 clientes · @DateTime.Today.Year</span>
+                    @if (clientesRecurrentes != null)
+                    {
+                        <div class="text-center mb-2">
+                            <div class="fw-bold @(clientesRecurrentes.Porcentaje >= 100 ? "text-success" : "text-danger")" style="font-size:28px;">
+                                @clientesRecurrentes.Porcentaje.ToString("N0")%
+                            </div>
+                            <div class="text-muted" style="font-size:10px;">Cumplimiento este mes</div>
+                        </div>
+                    }
+                    @if (clientesPorMes.Any())
+                    {
+                        <div class="d-flex align-items-end gap-1" style="height:80px;">
+                            @foreach (var m in clientesPorMes)
+                            {
+                                var altura = m.Meta > 0 ? (int)Math.Min(m.Porcentaje * 70 / 100, 70) : 0;
+                                <div class="d-flex flex-column align-items-center flex-fill kpi-bar-wrap"
+                                     title="@m.NombreMes: @m.ClientesRecurrentes clientes (@m.Porcentaje.ToString("N0")%)">
+                                    <div class="kpi-bar" style="height:@(Math.Max(altura, 2))px; background:@m.Color; width:100%; border-radius:3px 3px 0 0;"></div>
+                                    <div class="text-muted" style="font-size:8px;">@m.NombreMes</div>
+                                </div>
+                            }
+                        </div>
+                        <div class="d-flex gap-2 mt-2 flex-wrap" style="font-size:9px;">
+                            <span><span style="display:inline-block;width:8px;height:8px;background:#1D9E75;border-radius:2px;"></span> Superó</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;background:#28a745;border-radius:2px;"></span> Cumplió</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;background:#ffc107;border-radius:2px;"></span> Cerca</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;background:#dc3545;border-radius:2px;"></span> No cumplió</span>
+                        </div>
+                    }
+                </div>
+
             </div>
 
-            <div class="col-md-3">
-                <div class="card p-3" style="cursor:pointer;" @onclick="() => mostrarTodosVendedores = true">
-                    <div class="mb-2">
-                        <h6 class="fw-bold mb-0">Rendimiento del personal</h6>
-                        <span class="text-muted" style="font-size:11px;">Meta semanal: 3.000,00 Bs.</span>
-                    </div>
-                    @if (vendedores.Any())
+            <div class="col-md-3 d-flex flex-column gap-3">
+
+                <div class="card p-3 shadow-sm border-0 flex-fill d-flex flex-column justify-content-center"
+                     style="cursor:pointer;" @onclick="() => mostrarTodosVendedores = true">
+                    <h6 class="fw-bold mb-0">Rendimiento Personal</h6>
+                    <span class="text-muted mb-3 d-block" style="font-size:10px;">Meta: 3.000,00 Bs.</span>
+                    @if (vendedores != null && vendedores.Any())
                     {
-                        <div class="d-flex justify-content-around mt-2">
-                            <div class="text-center">
-                                <div class="text-muted mb-1" style="font-size:11px;">Mejor</div>
-                                <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none" stroke="#eee" stroke-width="3" />
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none" stroke="#1D9E75" stroke-width="3"
-                                          stroke-dasharray="@(Math.Min(vendedores.First().Porcentaje, 100).ToString("N0")), 100" />
-                                    <text x="18" y="20.5" text-anchor="middle"
-                                          style="font-size:8px;font-weight:bold;fill:#1D9E75;">
-                                        @vendedores.First().Porcentaje.ToString("N0")%
-                                    </text>
-                                </svg>
-                                <div style="font-size:11px;" class="fw-bold">@vendedores.First().NombreVendedor</div>
-                                <div style="font-size:10px;" class="text-muted">@vendedores.First().TotalVentas.ToString("N2") Bs.</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-muted mb-1" style="font-size:11px;">Menor</div>
-                                <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none" stroke="#eee" stroke-width="3" />
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none"
-                                          stroke="@(vendedores.Last().Porcentaje >= 100 ? "#1D9E75" : "#dc3545")"
-                                          stroke-width="3"
-                                          stroke-dasharray="@(Math.Min(vendedores.Last().Porcentaje, 100).ToString("N0")), 100" />
-                                    <text x="18" y="20.5" text-anchor="middle"
-                                          style="font-size:8px;font-weight:bold;fill:@(vendedores.Last().Porcentaje >= 100 ? "#1D9E75" : "#dc3545");">
-                                        @vendedores.Last().Porcentaje.ToString("N0")%
-                                    </text>
-                                </svg>
-                                <div style="font-size:11px;" class="fw-bold">@vendedores.Last().NombreVendedor</div>
-                                <div style="font-size:10px;" class="text-muted">@vendedores.Last().TotalVentas.ToString("N2") Bs.</div>
-                            </div>
+                        <div class="d-flex justify-content-around align-items-center">
+                            @foreach (var v in new[] { vendedores.First(), vendedores.Last() }.Distinct())
+                            {
+                                <div class="text-center">
+                                    <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
+                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545")" stroke-width="3" stroke-dasharray="@(Math.Min(v.Porcentaje, 100).ToString("N0")), 100" />
+                                        <text x="18" y="20.5" text-anchor="middle" style="font-size:9px;font-weight:bold;fill:@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545");">@v.Porcentaje.ToString("N0")%</text>
+                                    </svg>
+                                    <div class="fw-bold mt-1" style="font-size:12px;">@v.NombreVendedor</div>
+                                    <div class="text-muted" style="font-size:10px;">@v.TotalVentas.ToString("N2") Bs.</div>
+                                </div>
+                            }
                         </div>
                     }
                     else
@@ -110,6 +126,56 @@ else
                         <p class="text-muted small">Sin ventas esta semana.</p>
                     }
                 </div>
+
+                <div class="card p-3 shadow-sm border-0 flex-fill d-flex flex-column justify-content-center">
+                    <h6 class="fw-bold mb-0" style="font-size:13px;">Variación de Precios</h6>
+                    <span class="text-muted mb-2 d-block" style="font-size:10px;">Meta: variación máx 5% mensual</span>
+                    @if (PreciosCategoria != null)
+                    {
+                        <table class="table table-hover mb-0" style="font-size:13px;">
+                            <tbody>
+                                @foreach (var c in PreciosCategoria.Take(4))
+                                {
+                                    var variCat = c.PrecioEstandar > 0 ? ((c.PrecioPromedio - c.PrecioEstandar) / c.PrecioEstandar * 100) : 0;
+                                    <tr @onclick="() => AbrirDetalle(c)" style="cursor:pointer;">
+                                        <td class="py-2">@c.NombreCategoria</td>
+                                        <td class="text-end py-2">
+                                            <span class="badge @(variCat > 5 ? "bg-danger" : variCat > 0 ? "bg-warning text-dark" : "bg-success")" style="font-size:11px;">
+                                                @(variCat >= 0 ? "+" : "")@variCat.ToString("0.0")%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+
+                <div class="card p-3 shadow-sm border-0 flex-fill d-flex flex-column justify-content-center">
+                    <h6 class="fw-bold mb-0" style="font-size:13px;">Gasto Proveedor</h6>
+                    <span class="text-muted mb-2 d-block" style="font-size:10px;">Meta: ningún proveedor &gt; 40%</span>
+                    @if (GastosPorProveedor != null && opcionesTorta != null)
+                    {
+                        <div style="height:200px; overflow:hidden;">
+                            <ApexChart TItem="GastoProveedorDto"
+                                       Options="opcionesTorta"
+                                       Height="190"
+                                       OnDataPointSelection="MostrarTotal">
+                                <ApexPointSeries TItem="GastoProveedorDto"
+                                                 Items="GastosPorProveedor"
+                                                 Name="% Concentración"
+                                                 SeriesType="SeriesType.Pie"
+                                                 XValue="@(g => g.RazonSocial)"
+                                                 YValue="@(g => g.Porcentaje)" />
+                            </ApexChart>
+                        </div>
+                        @if (!string.IsNullOrEmpty(totalSeleccionado))
+                        {
+                            <div class="text-center mt-1 small fw-bold text-muted">@totalSeleccionado</div>
+                        }
+                    }
+                </div>
+
             </div>
 
             <div class="col-md-4">
@@ -125,39 +191,112 @@ else
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4">
                     <div class="modal-header border-0">
-                        <h5 class="modal-title fw-bold">Rendimiento del Personal</h5>
+                        <h5 class="modal-title fw-bold">Rendimiento Personal</h5>
                         <button type="button" class="btn-close" @onclick="() => mostrarTodosVendedores = false"></button>
                     </div>
-                    <div class="modal-body p-4">
-                        <p class="text-muted small mb-3">Meta semanal: 3.000,00 Bs.</p>
-                        <div class="d-flex flex-wrap justify-content-around gap-3">
-                            @foreach (var v in vendedores)
+                    <div class="modal-body p-4 text-center">
+                        <div class="d-flex flex-wrap justify-content-center gap-3">
+                            @if (vendedores != null)
                             {
-                                <div class="text-center">
-                                    <svg viewBox="0 0 36 36" style="width:80px;height:80px;">
-                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                              fill="none" stroke="#eee" stroke-width="3" />
-                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                              fill="none"
-                                              stroke="@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545")"
-                                              stroke-width="3"
-                                              stroke-dasharray="@(Math.Min(v.Porcentaje, 100).ToString("N0")), 100" />
-                                        <text x="18" y="20.5" text-anchor="middle"
-                                              style="font-size:8px;font-weight:bold;fill:@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545");">
-                                            @v.Porcentaje.ToString("N0")%
-                                        </text>
-                                    </svg>
-                                    <div class="fw-bold" style="font-size:13px;">@v.NombreVendedor</div>
-                                    <div class="text-muted" style="font-size:11px;">@v.TotalVentas.ToString("N2") Bs.</div>
-                                </div>
+                                @foreach (var v in vendedores)
+                                {
+                                    <div class="text-center">
+                                        <svg viewBox="0 0 36 36" style="width:70px;height:70px;">
+                                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+                                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545")" stroke-width="3" stroke-dasharray="@(Math.Min(v.Porcentaje, 100).ToString("N0")), 100" />
+                                            <text x="18" y="20.5" text-anchor="middle" style="font-size:8px;font-weight:bold;fill:@(v.Porcentaje >= 100 ? "#1D9E75" : "#dc3545");">@v.Porcentaje.ToString("N0")%</text>
+                                        </svg>
+                                        <div class="fw-bold small">@v.NombreVendedor</div>
+                                        <div class="text-muted" style="font-size:10px;">@v.TotalVentas.ToString("N2") Bs.</div>
+                                    </div>
+                                }
                             }
                         </div>
                     </div>
                     <div class="modal-footer border-0">
-                        <button class="btn btn-secondary w-100 rounded-pill" @onclick="() => mostrarTodosVendedores = false">Cerrar</button>
+                        <button class="btn btn-light w-100 rounded-pill" @onclick="() => mostrarTodosVendedores = false">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (mostrarDetalle && categoriaDetalle != null)
+    {
+        <div class="modal fade show d-block modal-blur" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold">@categoriaDetalle.NombreCategoria — Detalle</h5>
+                        <button type="button" class="btn-close" @onclick="() => mostrarDetalle = false"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        @if (ProductosDetalle != null)
+                        {
+                            <table class="table table-sm table-hover border-top" style="font-size:12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-end">Promedio</th>
+                                        <th class="text-end">Estándar</th>
+                                        <th class="text-center">Var.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in ProductosDetalle)
+                                    {
+                                        var vp = p.CostoEstandar > 0 ? ((p.PrecioPromedio - p.CostoEstandar) / p.CostoEstandar * 100) : 0;
+                                        <tr>
+                                            <td>@p.NombreProducto</td>
+                                            <td class="text-end">@p.PrecioPromedio.ToString("N2")</td>
+                                            <td class="text-end">@p.CostoEstandar.ToString("N2")</td>
+                                            <td class="text-center">
+                                                <span class="badge @(vp > 5 ? "bg-danger" : "bg-success")">@(vp >= 0 ? "+" : "")@vp.ToString("0.0")%</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button class="btn btn-light rounded-pill w-100" @onclick="() => mostrarDetalle = false">Cerrar</button>
                     </div>
                 </div>
             </div>
         </div>
     }
 }
+
+<style>
+    .modal-blur {
+        backdrop-filter: blur(5px);
+        background: rgba(0,0,0,0.3);
+        z-index: 1050;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0,0,0,0.03);
+    }
+
+    .kpi-bar-wrap {
+        position: relative;
+        cursor: pointer;
+    }
+
+        .kpi-bar-wrap:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            white-space: nowrap;
+            z-index: 10;
+            margin-bottom: 4px;
+        }
+</style>

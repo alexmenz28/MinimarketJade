@@ -36,6 +36,7 @@ builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddApexCharts();
 
 builder.Services.AddScoped<ICompraService, CompraService>();
+builder.Services.AddApexCharts();
 
 // Autenticación en memoria (login/logout): estado del usuario actual.
 builder.Services.AddSingleton<AuthService>();

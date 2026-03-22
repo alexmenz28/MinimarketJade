@@ -13,9 +13,9 @@ public class ReporteService : IReporteService
     {
         var desde = DateTime.Now.AddDays(-dias);
         var ventas = await _db.Venta
-        .AsNoTracking()
-        .Where(v => !v.Anulada && v.FechaHora >= desde && v.Total > 0)
-        .ToListAsync();
+            .AsNoTracking()
+            .Where(v => !v.Anulada && v.FechaHora >= desde && v.Total > 0)
+            .ToListAsync();
 
         return ventas
             .GroupBy(v => v.FechaHora.Date)
@@ -28,10 +28,10 @@ public class ReporteService : IReporteService
             .ToList();
     }
 
-
     public async Task<List<VendedorProductividad>> GetProductividadVendedoresAsync()
     {
-        var inicioSemana = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + 1);
+        var hoy = DateTime.Today;
+        var inicioSemana = hoy.AddDays(-(((int)hoy.DayOfWeek + 6) % 7));
 
         var ventas = await _db.Venta
             .AsNoTracking()
@@ -51,4 +51,52 @@ public class ReporteService : IReporteService
             .ToList();
     }
 
+    public async Task<ClientesRecurrentesDto> GetClientesRecurrentesAsync(int metaMensual = 40)
+    {
+        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        var ventas = await _db.Venta
+            .AsNoTracking()
+            .Where(v => !v.Anulada && v.FechaHora >= inicioMes && v.IdCliente != null)
+            .ToListAsync();
+
+        var recurrentes = ventas
+            .GroupBy(v => v.IdCliente)
+            .Count(g => g.Count() > 1);
+
+        return new ClientesRecurrentesDto
+        {
+            ClientesRecurrentes = recurrentes,
+            Meta = metaMensual
+        };
+    }
+
+    public async Task<List<ClientesMesDto>> GetClientesRecurrentesPorMesAsync(int anio, int metaMensual = 40)
+    {
+        var desde = new DateTime(anio, 1, 1);
+        var hasta = new DateTime(anio, 12, 31, 23, 59, 59);
+
+        var ventas = await _db.Venta
+            .AsNoTracking()
+            .Where(v => !v.Anulada && v.FechaHora >= desde && v.FechaHora <= hasta && v.IdCliente != null)
+            .ToListAsync();
+
+        var meses = new[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+
+        return Enumerable.Range(1, 12).Select(mes =>
+        {
+            var ventasMes = ventas.Where(v => v.FechaHora.Month == mes).ToList();
+            var recurrentes = ventasMes
+                .GroupBy(v => v.IdCliente)
+                .Count(g => g.Count() > 1);
+
+            return new ClientesMesDto
+            {
+                Mes = mes,
+                NombreMes = meses[mes - 1],
+                ClientesRecurrentes = recurrentes,
+                Meta = metaMensual
+            };
+        }).ToList();
+    }
 }
