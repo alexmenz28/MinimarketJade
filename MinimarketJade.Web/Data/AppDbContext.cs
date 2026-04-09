@@ -294,18 +294,17 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("email");
             entity.Property(e => e.NitRuc)
+                .IsRequired()
                 .HasMaxLength(30)
                 .HasColumnName("nit_ruc");
-            // Mapeamos la propiedad Nombre de la entidad a la columna razon_social existente
-            entity.Property(e => e.Nombre)
+            // Mapeamos la propiedad RazonSocial de la entidad a la columna razon_social existente
+            entity.Property(e => e.RazonSocial)
+                .IsRequired()
                 .HasMaxLength(200)
                 .HasColumnName("razon_social");
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");
-            entity.Property(e => e.TipoProducto)
-                .HasMaxLength(100)
-                .HasColumnName("tipo_producto");
         });
 
         modelBuilder.Entity<Usuario>(entity =>

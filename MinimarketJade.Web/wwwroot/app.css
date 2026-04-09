@@ -58,3 +58,65 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Dashboard styles for KPI pages */
+.dashboard-card {
+    background: linear-gradient(180deg, #1f2933, #111214);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.04);
+}
+
+.kpi-header {
+    background: linear-gradient(90deg, #0b5aa7, #1b6ec2);
+    color: white;
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+}
+
+.kpi-card {
+    background: #111317;
+    border: 1px solid rgba(255,255,255,0.04);
+    color: #e6eef8;
+    border-radius: 8px;
+}
+
+.kpi-small {
+    color: #9aa6b2;
+}
+
+.kpi-value {
+    color: #ffffff;
+}
+
+.kpi-progress .progress {
+    background: rgba(255,255,255,0.06);
+}
+
+.kpi-progress .progress-bar {
+    background: linear-gradient(90deg,#2ea3ff,#1f77b4);
+}
+
+.donut-legend {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+/* make table dark */
+.table-dark th, .table-dark td {
+    border-top: 1px solid rgba(255,255,255,0.03);
+}
+
+/* Simple bar chart styles for KPI */
+.bar-container {
+    background: #e9ecef;
+    height: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.bar-fill {
+    background: linear-gradient(90deg, #1b6ec2, #2ea3ff);
+    height: 100%;
+}
+.bar-row .fw-bold { font-size: 0.95rem; }
+
+
